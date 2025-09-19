@@ -5,7 +5,7 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        include: ['src/tests/**/*.ts'],
+        include: ['tests/**/*.ts'],
         // DO NOT CHANGE THIS
         testTimeout: 5000,
         pool: 'forks',
@@ -21,7 +21,7 @@ export default defineConfig({
         },
         coverage: {
             reporter: ['text', 'json', 'html'],
-            exclude: ['node_modules/', 'src/tests/', 'dist/', '*.config.ts'],
+            exclude: ['node_modules/', 'tests/', 'dist/', '*.config.ts'],
         },
     },
     resolve: {
