@@ -1,8 +1,5 @@
 import { TransportInterface, TransportType, TransportOptions } from './interfaces/transport.interface'
 import { DeviceFinderInterface, EndpointManagerInterface } from './interfaces/endpoint.interface'
-import { USBTransport } from './usb/usb-transport'
-import { USBDeviceFinder } from './usb/usb-device-finder'
-import { USBEndpointManager } from './usb/usb-endpoint-manager'
 
 /**
  * Transport factory for creating transport implementations
@@ -12,9 +9,11 @@ export class TransportFactory {
      * Create a USB transport instance
      * @param options - USB transport options
      */
-    createUSBTransport(_options?: USBTransportOptions): TransportInterface {
-        const deviceFinder = this.createUSBDeviceFinder()
-        const endpointManager = this.createUSBEndpointManager()
+    async createUSBTransport(_options?: USBTransportOptions): Promise<TransportInterface> {
+        // Dynamic import for USB transport (Node.js only)
+        const { USBTransport } = await import('./usb/usb-transport')
+        const deviceFinder = await this.createUSBDeviceFinder()
+        const endpointManager = await this.createUSBEndpointManager()
         return new USBTransport(deviceFinder, endpointManager)
     }
 
@@ -22,7 +21,7 @@ export class TransportFactory {
      * Create an IP transport instance
      * @param options - IP transport options
      */
-    createIPTransport(_options: IPTransportOptions): TransportInterface {
+    async createIPTransport(_options: IPTransportOptions): Promise<TransportInterface> {
         // TODO: Not implemented in old architecture
         throw new Error('IP transport not implemented in old architecture')
     }
@@ -32,12 +31,12 @@ export class TransportFactory {
      * @param type - Transport type
      * @param options - Transport options
      */
-    create(type: TransportType, options?: unknown): TransportInterface {
+    async create(type: TransportType, options?: unknown): Promise<TransportInterface> {
         switch (type) {
             case TransportType.USB:
-                return this.createUSBTransport(options as USBTransportOptions)
+                return await this.createUSBTransport(options as USBTransportOptions)
             case TransportType.IP:
-                return this.createIPTransport(options as IPTransportOptions)
+                return await this.createIPTransport(options as IPTransportOptions)
             case TransportType.BLUETOOTH:
                 // TODO: Not implemented in old architecture
                 throw new Error('Bluetooth transport not implemented in old architecture')
@@ -49,14 +48,16 @@ export class TransportFactory {
     /**
      * Create a device finder for USB devices
      */
-    createUSBDeviceFinder(): DeviceFinderInterface {
+    async createUSBDeviceFinder(): Promise<DeviceFinderInterface> {
+        const { USBDeviceFinder } = await import('./usb/usb-device-finder')
         return new USBDeviceFinder()
     }
 
     /**
      * Create an endpoint manager for USB devices
      */
-    createUSBEndpointManager(): EndpointManagerInterface {
+    async createUSBEndpointManager(): Promise<EndpointManagerInterface> {
+        const { USBEndpointManager } = await import('./usb/usb-endpoint-manager')
         return new USBEndpointManager()
     }
 }

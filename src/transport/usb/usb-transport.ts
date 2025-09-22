@@ -25,26 +25,37 @@ export class USBTransport implements TransportInterface {
             throw new Error('Already connected')
         }
 
-        // Find device - include PTP class filter to ensure we find PTP devices
-        const devices = await this.deviceFinder.findDevices({
-            vendorId: deviceIdentifier.vendorId,
-            productId: deviceIdentifier.productId,
-            class: 6, // PTP/Still Image class
-        })
+        let device: any = null
 
-        let device = devices.find(d => {
-            if (deviceIdentifier.serialNumber) {
-                return d.serialNumber === deviceIdentifier.serialNumber
-            }
-            return true
-        })
-
-        if (!device && this.isWebEnvironment) {
-            // Request device access in web environment
+        // In web environment with auto-discovery (vendorId 0), directly request device
+        if (this.isWebEnvironment && deviceIdentifier.vendorId === 0) {
             device = await this.deviceFinder.requestDevice({
+                vendorId: undefined, // Will show all PTP devices
+                productId: undefined,
+                class: 6, // PTP/Still Image class
+            })
+        } else {
+            // Find device - include PTP class filter to ensure we find PTP devices
+            const devices = await this.deviceFinder.findDevices({
                 vendorId: deviceIdentifier.vendorId,
                 productId: deviceIdentifier.productId,
+                class: 6, // PTP/Still Image class
             })
+
+            device = devices.find(d => {
+                if (deviceIdentifier.serialNumber) {
+                    return d.serialNumber === deviceIdentifier.serialNumber
+                }
+                return true
+            })
+
+            if (!device && this.isWebEnvironment) {
+                // Request device access in web environment
+                device = await this.deviceFinder.requestDevice({
+                    vendorId: deviceIdentifier.vendorId,
+                    productId: deviceIdentifier.productId,
+                })
+            }
         }
 
         if (!device) {
@@ -136,7 +147,11 @@ export class USBTransport implements TransportInterface {
         }
 
         if (this.isWebEnvironment) {
-            const result = await this.device.transferIn(this.endpoints.bulkIn.endpointNumber, maxLength)
+            // WebUSB has a 32MB limit per transfer, so cap it
+            const MAX_WEBUSB_TRANSFER = 32 * 1024 * 1024 - 1024; // 32MB minus 1KB for safety
+            const transferSize = Math.min(maxLength, MAX_WEBUSB_TRANSFER)
+            
+            const result = await this.device.transferIn(this.endpoints.bulkIn.endpointNumber, transferSize)
             if (result.status !== 'ok') {
                 throw new Error(`Transfer failed: ${result.status}`)
             }
@@ -209,9 +224,9 @@ export class USBTransport implements TransportInterface {
     }
 
     /**
-     * Get device info (vendor ID and product ID)
+     * Get connected device information
      */
-    getDeviceInfo(): { vendorId: number; productId: number } | null {
+    getDeviceInfo(): DeviceIdentifier | null {
         return this.deviceInfo
     }
 

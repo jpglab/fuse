@@ -1,64 +1,29 @@
-import { USBDeviceFinder } from '@transport/usb/usb-device-finder'
-import { CameraFactory } from '@camera/camera-factory'
+/**
+ * Discovery functions with runtime detection
+ * In Node.js, provides full USB device discovery
+ * In browser, returns functions that throw informative errors
+ */
 import { CameraOptions, CameraDescriptor } from './types'
 
+// Runtime check for Node.js environment
+const isNode = typeof window === 'undefined'
+
 export async function listCameras(options?: CameraOptions): Promise<CameraDescriptor[]> {
-    const deviceFinder = new USBDeviceFinder()
-    const cameraFactory = new CameraFactory()
-
-    const searchCriteria = {
-        vendorId: options?.usb?.vendorId || 0,
-        productId: options?.usb?.productId || 0,
+    if (!isNode) {
+        throw new Error('listCameras() is not available in browser environment. Use WebUSB API for camera discovery.')
     }
 
-    const devices = await deviceFinder.findDevices(searchCriteria)
-
-    let cameras: CameraDescriptor[] = devices.map(device => {
-        const vendor = cameraFactory.detectVendor(device.vendorId)
-        return {
-            vendor: vendor.charAt(0).toUpperCase() + vendor.slice(1),
-            model: 'Camera',
-            serialNumber: device.serialNumber,
-            usb: {
-                vendorId: device.vendorId,
-                productId: device.productId,
-            },
-        }
-    })
-
-    if (options?.vendor) {
-        cameras = cameras.filter(camera => camera.vendor.toLowerCase() === options.vendor!.toLowerCase())
-    }
-
-    if (options?.model) {
-        cameras = cameras.filter(camera => camera.model.toLowerCase().includes(options.model!.toLowerCase()))
-    }
-
-    if (options?.serialNumber) {
-        cameras = cameras.filter(camera => camera.serialNumber === options.serialNumber)
-    }
-
-    if (options?.ip) {
-        // Future: IP camera discovery will be added here
-        // For now, we can manually add IP cameras if specified
-        if (options.ip.host) {
-            const ipCamera: CameraDescriptor = {
-                vendor: options.vendor || 'Unknown',
-                model: options.model || 'IP Camera',
-                serialNumber: options.serialNumber,
-                ip: {
-                    host: options.ip.host,
-                    port: options.ip.port || 15740,
-                },
-            }
-            cameras.push(ipCamera)
-        }
-    }
-
-    return cameras
+    // Dynamic import for Node.js environment
+    const { listCameras: listCamerasNode } = await import('./discovery-node')
+    return listCamerasNode(options)
 }
 
 export function watchCameras(callback: (cameras: CameraDescriptor[]) => void, options?: CameraOptions): () => void {
+    if (!isNode) {
+        throw new Error('watchCameras() is not available in browser environment. Use WebUSB API for camera discovery.')
+    }
+
+    // In Node.js, implement the full functionality
     const intervalMilliseconds = 1000
     let lastCameraCount = -1
 

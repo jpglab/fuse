@@ -5,7 +5,7 @@ import { SonyAuthenticator, SonyAuthenticatorInterface } from './sony-authentica
 import { SonyOperations, SonyDeviceProperties, SonyConstants } from './sony-constants'
 import { DeviceProperty, PropertyValue } from '../../properties/device-properties'
 import { LiveViewFrame, FrameFormat } from '../../interfaces/liveview.interface'
-import { ImageData, ImageFormat } from '../../interfaces/image.interface'
+import { ImageData, ImageFormat, ImageInfo } from '../../interfaces/image.interface'
 import { PTPOperations, PTPResponses } from '../../../core/ptp/ptp-constants'
 
 // Data type constants
@@ -413,10 +413,14 @@ export class SonyCamera extends GenericPTPCamera {
         }
 
         // Get the actual image data
+        // WebUSB has a 32MB limit, so cap our request
+        const MAX_SAFE_TRANSFER = 30 * 1024 * 1024; // 30MB to be safe
+        const requestSize = fileSize > 0 ? Math.min(fileSize + 1024, MAX_SAFE_TRANSFER) : MAX_SAFE_TRANSFER;
+        
         const response = await this.protocol.sendOperation({
             code: PTPOperations.GET_OBJECT,
             parameters: [SonyConstants.RECENT_IMAGE_HANDLE],
-            maxDataLength: fileSize > 0 ? fileSize + 1024 : 50 * 1024 * 1024, // Use file size or 50MB
+            maxDataLength: requestSize,
         })
 
         if (response.code !== PTPResponses.OK || !response.data) {
@@ -432,7 +436,61 @@ export class SonyCamera extends GenericPTPCamera {
             width: 0, // TODO: Parse from EXIF
             height: 0,
             filename,
+            handle: SonyConstants.RECENT_IMAGE_HANDLE,
         }
+    }
+    
+    /**
+     * Override listImages for Sony cameras
+     * When save destination is set to host, images are not stored on SD card
+     * Instead, we return a special entry for the recent image
+     */
+    async listImages(): Promise<ImageInfo[]> {
+        // When save destination is set to host, we can't list images normally
+        // Return a placeholder for the most recent image
+        console.log('[Sony] listImages called - returning recent image placeholder')
+        return [{
+            handle: SonyConstants.RECENT_IMAGE_HANDLE,
+            storageId: 0,
+            objectFormat: 0x3801, // JPEG
+            protectionStatus: 0,
+            objectCompressedSize: 0,
+            thumbFormat: 0,
+            thumbCompressedSize: 0,
+            thumbPixWidth: 0,
+            thumbPixHeight: 0,
+            imagePixWidth: 0,
+            imagePixHeight: 0,
+            imageBitDepth: 0,
+            parentObject: 0,
+            associationType: 0,
+            associationDescription: 0,
+            sequenceNumber: 0,
+            filename: 'recent_capture.jpg',
+            captureDate: new Date(),
+            modificationDate: new Date(),
+        }]
+    }
+    
+    /**
+     * Override downloadImage for Sony cameras
+     * Handle the special RECENT_IMAGE_HANDLE
+     */
+    async downloadImage(handle: number): Promise<ImageData> {
+        if (handle === SonyConstants.RECENT_IMAGE_HANDLE) {
+            console.log('[Sony] Downloading recent image')
+            const photo = await this.getPhoto()
+            return {
+                data: photo.data,
+                format: photo.format,
+                width: photo.width,
+                height: photo.height,
+                handle,
+            }
+        }
+        
+        // Fall back to parent implementation for other handles
+        return super.downloadImage(handle)
     }
 
     // Private helper methods

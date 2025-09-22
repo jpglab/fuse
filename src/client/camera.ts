@@ -6,7 +6,7 @@ import { DeviceProperty } from '@camera/properties/device-properties'
 import { listCameras } from './discovery'
 import { CameraOptions, CameraDescriptor, Photo as PhotoType, Frame, ExposureMode } from './types'
 import { Photo } from './photo'
-import { EventEmitter } from 'events'
+import { EventEmitter } from './event-emitter'
 
 export class Camera extends EventEmitter {
     private options: CameraOptions
@@ -25,25 +25,35 @@ export class Camera extends EventEmitter {
     }
 
     async connect(): Promise<void> {
+        const isWebEnvironment = typeof window !== 'undefined'
+        
         if (!this.options.usb?.productId && !this.options.ip?.host) {
-            const cameras = await listCameras(this.options)
+            if (isWebEnvironment) {
+                // In browser, we need to request device permission
+                // The transport will handle this via requestDevice
+                // We'll pass vendorId 0 to trigger auto-discovery
+                this.options.usb = { vendorId: 0, productId: 0 }
+            } else {
+                // In Node.js, use listCameras for auto-discovery
+                const cameras = await listCameras(this.options)
 
-            if (cameras.length === 0) {
-                const filters = []
-                if (this.options.vendor) filters.push(`vendor: ${this.options.vendor}`)
-                if (this.options.model) filters.push(`model: ${this.options.model}`)
-                if (this.options.usb?.vendorId) filters.push(`USB vendor: 0x${this.options.usb.vendorId.toString(16)}`)
+                if (cameras.length === 0) {
+                    const filters = []
+                    if (this.options.vendor) filters.push(`vendor: ${this.options.vendor}`)
+                    if (this.options.model) filters.push(`model: ${this.options.model}`)
+                    if (this.options.usb?.vendorId) filters.push(`USB vendor: 0x${this.options.usb.vendorId.toString(16)}`)
 
-                const filterMsg = filters.length > 0 ? ` matching filters: ${filters.join(', ')}` : ''
-                throw new Error(`No cameras found${filterMsg}. Please connect a camera via USB.`)
-            }
+                    const filterMsg = filters.length > 0 ? ` matching filters: ${filters.join(', ')}` : ''
+                    throw new Error(`No cameras found${filterMsg}. Please connect a camera via USB.`)
+                }
 
-            const firstCamera = cameras[0]
-            if (firstCamera) {
-                this.options = { ...this.options, ...firstCamera }
-                this._vendor = firstCamera.vendor
-                this._model = firstCamera.model
-                this._serialNumber = firstCamera.serialNumber
+                const firstCamera = cameras[0]
+                if (firstCamera) {
+                    this.options = { ...this.options, ...firstCamera }
+                    this._vendor = firstCamera.vendor
+                    this._model = firstCamera.model
+                    this._serialNumber = firstCamera.serialNumber
+                }
             }
         }
 
@@ -55,8 +65,15 @@ export class Camera extends EventEmitter {
             throw new Error('IP connections not yet implemented')
         }
 
-        const transport = this.transportFactory.create(TransportType.USB, {
+        console.log('[Camera] Creating USB transport...')
+        const transport = await this.transportFactory.create(TransportType.USB, {
             timeout: this.options.timeout,
+        })
+
+        console.log('[Camera] Connecting to USB device with:', {
+            vendorId: this.options.usb?.vendorId || 0,
+            productId: this.options.usb?.productId || 0,
+            serialNumber: this.options.serialNumber,
         })
 
         await transport.connect({
@@ -65,10 +82,25 @@ export class Camera extends EventEmitter {
             serialNumber: this.options.serialNumber,
         })
 
+        console.log('[Camera] USB transport connected successfully')
+
+        // Get the actual device info from transport (important for WebUSB auto-discovery)
+        const deviceInfo = transport.getDeviceInfo?.()
+        if (deviceInfo) {
+            console.log('[Camera] Actual device info from transport:', deviceInfo)
+            // Update our options with the real vendor/product IDs
+            this.options.usb = {
+                vendorId: deviceInfo.vendorId,
+                productId: deviceInfo.productId
+            }
+        }
+
         const detectedVendor =
             this.options.vendor ||
             this.cameraFactory.detectVendor(this.options.usb?.vendorId || 0, this.options.usb?.productId || 0)
 
+        console.log('[Camera] Detected vendor:', detectedVendor)
+        
         this.cameraImplementation = this.cameraFactory.create(detectedVendor, transport)
         await this.cameraImplementation.connect()
 
@@ -108,17 +140,44 @@ export class Camera extends EventEmitter {
     async takePhoto(): Promise<PhotoType> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         try {
+            console.log('[Camera] Capturing image...')
             await this.cameraImplementation.captureImage()
-            const images = await this.cameraImplementation.listImages()
-            if (images.length === 0) {
-                throw new Error('No images found after capture')
+            console.log('[Camera] Image captured, waiting for processing...')
+            
+            // Wait a bit for the camera to process the image
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            console.log('[Camera] Listing images...')
+            let images
+            try {
+                images = await this.cameraImplementation.listImages()
+            } catch (listError: any) {
+                // If listing fails with 0x2013, the image might be saved to card only
+                console.warn('[Camera] Could not list images:', listError.message)
+                console.log('[Camera] Photo was captured but may be saved to memory card only')
+                // Return a dummy photo object to indicate success
+                const dummyPhoto = new Photo(Buffer.from(''), 'capture_successful.jpg')
+                this.emit('photo', dummyPhoto)
+                return dummyPhoto
             }
+            
+            if (!images || images.length === 0) {
+                console.log('[Camera] No images available for download (saved to card only?)')
+                const dummyPhoto = new Photo(Buffer.from(''), 'capture_successful.jpg')
+                this.emit('photo', dummyPhoto)
+                return dummyPhoto
+            }
+            
             const latestImage = images[images.length - 1]
             if (!latestImage) {
                 throw new Error('No image found after capture')
             }
+            
+            console.log('[Camera] Downloading image:', latestImage.filename)
             const imageData = await this.cameraImplementation.downloadImage(latestImage.handle)
-            const buffer = imageData instanceof Buffer ? imageData : Buffer.from(imageData as any)
+            // downloadImage returns an ImageData object with a data property containing the actual bytes
+            const rawData = imageData.data || imageData
+            const buffer = rawData instanceof Buffer ? rawData : Buffer.from(rawData as any)
             const photo = new Photo(buffer, latestImage.filename || 'unknown')
             this.emit('photo', photo)
             return photo

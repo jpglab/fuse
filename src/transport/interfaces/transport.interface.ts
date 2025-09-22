@@ -40,6 +40,11 @@ export interface TransportInterface {
      * Get transport type identifier
      */
     getType(): TransportType
+
+    /**
+     * Get connected device information
+     */
+    getDeviceInfo?(): DeviceIdentifier | null
 }
 
 /**

@@ -1,6 +1,4 @@
 import { Photo as PhotoType } from './types'
-import { promises as fs } from 'fs'
-import path from 'path'
 
 export class Photo implements PhotoType {
     public data: Buffer
@@ -16,13 +14,24 @@ export class Photo implements PhotoType {
     }
 
     async save(filePath: string): Promise<void> {
-        const dir = path.dirname(filePath)
-        try {
-            await fs.access(dir)
-        } catch {
-            await fs.mkdir(dir, { recursive: true })
+        // Dynamic import for Node.js filesystem operations
+        // This allows the library to work in both Node.js and browser environments
+        if (typeof window === 'undefined') {
+            // Node.js environment
+            const { promises: fs } = await import('fs')
+            const path = await import('path')
+            
+            const dir = path.dirname(filePath)
+            try {
+                await fs.access(dir)
+            } catch {
+                await fs.mkdir(dir, { recursive: true })
+            }
+            await fs.writeFile(filePath, this.data)
+        } else {
+            // Browser environment - use File API or throw error
+            throw new Error('Photo.save() is not available in browser environment. Use the Blob/File API instead.')
         }
-        await fs.writeFile(filePath, this.data)
     }
 
     toJSON() {

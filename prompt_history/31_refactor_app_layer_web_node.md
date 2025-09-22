@@ -1,16 +1,21 @@
 We have just gone through this migration and I found a problem. We can't export everything to one single index file because it is intended to be used in different runtimes (node vs. web/browser).
 
-The issue I'm getting when I try to import this in a Next.js project is "Can't resolve fs".
+The issue I'm getting when I try to import this in a Next.js project is "Can't resolve fs":
+- We're using `fs` in `src/client/photo.ts`
+- We're using `USBDeviceFinder` in `src/client/discovery.ts` and `src/transport/transport-factory.ts`
+- `USBDeviceFinder` imports `usb` which is only available in Node
+- We tried making dynamic imports for `USBDeviceFinder` and unfortunately even with the webpack ignores it still bundles the node dependencies for the frontend
+- We should split this into two entry points, `node.ts` and `web.ts` instead of the combined `index.ts`
+- Only differences in code to be at the highest level (the entry points)
+- Maximal code sharing for the rest of the repo
+- API should stay the same for client (new Camera(), camera.connect()) without having to pass in transport classes
 
-- We're using `fs` in several tests
-- We should move the tests folder into the root directory and update any imports and scripts
-- We're using fs in photo
-- The photo type should probably have a pluggable/composition/dependency injection based way to save and load data too or just return it as a buffer and then the user can do what they want with it, but we can't import fs at the top level
-- Foresee we might have issues with the USB transport layer but maybe not
-- Any other issues you see
-- Instead of a unified `index.ts` file maybe we can have a `web.ts` and a `node.ts` entry point, but let's change the minimal amount to get things working
+We want to use Vite library mode and dynamic imports to build this library instead of tsup and webpack.
 
-Could you make a proposal for fixing this with minimal changes to get it working in both node and the browser?
+- I already removed things from package.json.
+- Remember we need to have separate web and node entry points. 
+- Here are the docs:
+https://vite.dev/guide/build.html#library-mode
 
 # Simplified Fuse API Proposal
 
