@@ -109,3 +109,7 @@ export type SDIDevicePropInfoParsed = {
     numOfElements: HexCode
     sdiDevicePropInfoDataset: SDIExtDevicePropInfoParsed[]
 }
+
+export const parseSDIDevicePropInfoArray = (data: Uint8Array): SDIDevicePropInfoParsed => {
+    // TODO
+}
