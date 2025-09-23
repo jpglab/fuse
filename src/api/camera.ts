@@ -7,6 +7,7 @@ import { listCameras } from '@api/discovery'
 import { Photo } from '@api/photo'
 import { Frame } from '@api/frame'
 import { toBuffer } from '@core/buffers'
+import { ProtocolInterface } from '@core/protocol'
 
 /**
  * High-level Camera API - simplified wrapper around GenericPTPCamera
@@ -132,11 +133,6 @@ export class Camera {
         return this.cameraImplementation.getCameraInfo()
     }
 
-    async getStorageInfo() {
-        if (!this.cameraImplementation) throw new Error('Camera not connected')
-        return this.cameraImplementation.getStorageInfo()
-    }
-
     async captureImage(): Promise<Uint8Array | null> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         return this.cameraImplementation.captureImage()
@@ -166,5 +162,10 @@ export class Camera {
         await this.captureImage()
         // Return a placeholder photo indicating success
         return new Photo(toBuffer(new Uint8Array()), 'capture_successful.jpg')
+    }
+
+    getProtocol(): ProtocolInterface {
+        if (!this.cameraImplementation) throw new Error('Camera not connected')
+        return this.cameraImplementation.getProtocol()
     }
 }

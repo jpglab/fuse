@@ -1,4 +1,5 @@
 import { TransportOptions } from '@transport/interfaces/transport-types'
+import { ProtocolInterface } from '@core/protocol'
 
 /**
  * Camera connection options
@@ -64,15 +65,12 @@ export interface CameraInterface {
   getCameraInfo(): Promise<CameraInfo>
 
   /**
-   * Get storage information
-   */
-  getStorageInfo(): Promise<StorageInfo[]>
-
-  /**
    * Capture a live view frame
    * Automatically handles enabling/disabling live view as needed
    */
   captureLiveView(): Promise<any>
+
+  getProtocol(): ProtocolInterface
 }
 
 /**

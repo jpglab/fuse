@@ -5,7 +5,7 @@ import { PTPOperations } from '@constants/ptp/operations'
 import { PTPResponses } from '@constants/ptp/responses'
 import { PTPProperties } from '@constants/ptp/properties'
 import { EventEmitter } from '@api/event-emitter'
-import { encodePTPValue, decodePTPValue, parsePTPUint32Array } from '@core/buffers'
+import { encodePTPValue, decodePTPValue } from '@core/buffers'
 
 /**
  * Generic PTP camera implementation - Simplified V7 Architecture
@@ -56,17 +56,8 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
   }
 
   async captureImage(): Promise<Uint8Array | null> {
-    const response = await this.protocol.sendOperation({
-      ...PTPOperations.INITIATE_CAPTURE,
-      parameters: [0, 0], // storageId: 0, objectFormat: 0
-    })
-
-    if (response.code !== PTPResponses.OK.code) {
-      throw new Error(`Capture failed: 0x${response.code.toString(16)}`)
-    }
-
-    this.emit('capture')
-    return response.data || null
+    // TODO
+    return null
   }
 
   async getDeviceProperty<T = any>(propertyName: keyof typeof PTPProperties): Promise<T> {
@@ -138,73 +129,21 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
       deviceVersion: '1.0',
     }
     
-    // Try to get battery level
-    let batteryLevel = 0
-    try {
-      batteryLevel = await this.getDeviceProperty('BATTERY_LEVEL')
-    } catch {
-      // Battery level not supported
-    }
-    
     return {
       manufacturer: info.manufacturer || 'Unknown',
       model: info.model || 'Unknown',
       serialNumber: info.serialNumber || '',
       firmwareVersion: info.deviceVersion || '',
-      batteryLevel,
+      batteryLevel: undefined as any,
     }
-  }
-
-  async getStorageInfo(): Promise<StorageInfo[]> {
-    const idsResponse = await this.protocol.sendOperation({
-      ...PTPOperations.GET_STORAGE_IDS,
-    })
-
-    if (idsResponse.code !== PTPResponses.OK.code) {
-      return []
-    }
-
-    // Parse storage IDs
-    const idsData = idsResponse.data || new Uint8Array()
-    const storageIds = parsePTPUint32Array(idsData)
-
-    const storageInfos: StorageInfo[] = []
-
-    for (const id of storageIds) {
-      const infoResponse = await this.protocol.sendOperation({
-        ...PTPOperations.GET_STORAGE_INFO,
-        parameters: [id],
-      })
-
-      if (infoResponse.code === PTPResponses.OK.code && infoResponse.data) {
-        // Parse storage info inline (basic implementation)
-        const data = infoResponse.data
-        data // Mark as used
-        const info = {
-          storageType: 0,
-          storageDescription: 'Storage',
-          maxCapacity: 0,
-          freeSpaceInBytes: 0,
-        }
-        // TODO: Properly parse storage info from response data
-        
-        storageInfos.push({
-          id: id.toString(16),
-          name: info.storageDescription || `Storage ${id}`,
-          type: info.storageType || 0,
-          totalSpace: info.maxCapacity || 0,
-          freeSpace: info.freeSpaceInBytes || 0,
-        })
-      }
-    }
-
-    return storageInfos
   }
 
   async captureLiveView(): Promise<any> {
-    // Generic PTP doesn't have standard live view
-    // Subclasses should override this for vendor-specific implementations
+    // TODO
     return null
   }
 
+  getProtocol(): ProtocolInterface {
+    return this.protocol
+  }
 }
