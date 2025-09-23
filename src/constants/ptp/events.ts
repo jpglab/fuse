@@ -4,7 +4,20 @@
  */
 
 import { DataType } from '@constants/types'
-import type { EventDefinitionShape } from '@constants/validation-types'
+import type { HexCode, DataTypeValue } from '@constants/types'
+
+/**
+ * Event definition shape for validation
+ */
+type EventDefinitionShape = Record<string, {
+  code: HexCode
+  description: string
+  parameters?: Array<{
+    name: string
+    type: DataTypeValue
+    description: string
+  }>
+}>
 
 /**
  * PTP Events with type validation

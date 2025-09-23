@@ -105,19 +105,19 @@ describe('SonyCamera', () => {
     }, 15000) // Increase timeout to 15 seconds
 
     it('should get current ISO', async () => {
-        const iso = await camera.getDeviceProperty('EXPOSURE_INDEX')
+        const iso = await camera.getDeviceProperty('ISO')
         expect(iso).toBeDefined()
         console.log(`  Current ISO: ${iso}`)
     })
 
     it('should get current shutter speed', async () => {
-        const shutterSpeed = await camera.getDeviceProperty('EXPOSURE_TIME')
+        const shutterSpeed = await camera.getDeviceProperty('SHUTTER_SPEED')
         expect(shutterSpeed).toBeDefined()
         console.log(`  Current shutter speed: ${shutterSpeed}`)
     })
 
     it('should get current aperture', async () => {
-        const aperture = await camera.getDeviceProperty('F_NUMBER')
+        const aperture = await camera.getDeviceProperty('APERTURE')
         expect(aperture).toBeDefined()
         console.log(`  Current aperture: ${aperture}`)
     })
@@ -172,8 +172,8 @@ describe('SonyCamera', () => {
 
     it('should handle multiple operations in sequence', async () => {
         // Quick sequence test
-        const iso1 = await camera.getDeviceProperty('EXPOSURE_INDEX')
-        const iso2 = await camera.getDeviceProperty('EXPOSURE_INDEX')
+        const iso1 = await camera.getDeviceProperty('ISO')
+        const iso2 = await camera.getDeviceProperty('ISO')
         expect(iso1).toEqual(iso2)
 
         const info = await camera.getCameraInfo()

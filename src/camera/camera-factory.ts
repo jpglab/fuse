@@ -7,6 +7,7 @@ import { CameraInterface } from '@camera/interfaces/camera.interface'
 import { GenericPTPCamera } from '@camera/generic/generic-ptp-camera'
 import { SonyCamera } from '@camera/vendors/sony/sony-camera'
 import { SonyAuthenticator } from '@camera/vendors/sony/sony-authenticator'
+import { VendorIDs } from '@constants/vendors/vendor-ids'
 
 /**
  * Camera factory for creating camera implementations
@@ -91,17 +92,17 @@ export class CameraFactory {
    */
   detectVendor(vendorId: number, _productId?: number): string {
     switch (vendorId) {
-      case 0x054c:
+      case VendorIDs.SONY:
         return 'sony'
-      case 0x04a9:
+      case VendorIDs.CANON:
         return 'canon'
-      case 0x04b0:
+      case VendorIDs.NIKON:
         return 'nikon'
-      case 0x04cb:
+      case VendorIDs.FUJIFILM:
         return 'fujifilm'
-      case 0x04da:
+      case VendorIDs.PANASONIC:
         return 'panasonic'
-      case 0x07b4:
+      case VendorIDs.OLYMPUS:
         return 'olympus'
       default:
         return 'generic'

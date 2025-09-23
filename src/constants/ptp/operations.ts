@@ -4,7 +4,22 @@
  */
 
 import { DataType } from '@constants/types'
-import type { OperationDefinitionShape } from '@constants/validation-types'
+import type { HexCode, DataTypeValue } from '@constants/types'
+
+/**
+ * Operation definition shape for validation
+ */
+type OperationDefinitionShape = Record<string, {
+  code: HexCode
+  description: string
+  parameters?: Array<{
+    name: string
+    type: DataTypeValue
+    description: string
+  }>
+  hasDataPhase?: boolean
+  dataDescription?: string
+}>
 
 /**
  * PTP Operations with type validation

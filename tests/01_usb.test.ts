@@ -5,11 +5,12 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { TransportFactory } from '@transport/transport-factory'
-import { TransportType } from '@transport/interfaces/device.interface'
+import { TransportType } from '@transport/interfaces/transport.interface'
 import { USBDeviceFinder } from '@transport/usb/usb-device-finder'
+import { VendorIDs, VendorNames } from '@constants/vendors/vendor-ids'
 
 // Sony vendor ID
-const SONY_VENDOR_ID = 0x054c
+const SONY_VENDOR_ID = VendorIDs.SONY
 
 // Set to true for verbose output
 const VERBOSE = true
@@ -64,15 +65,13 @@ describe('USB Transport', () => {
                 if (VERBOSE) {
                     // Check if it's a known vendor
                     const knownVendors: Record<number, string> = {
-                        0x054c: 'Sony Group Corporation',
+                        ...VendorNames,
                         0x05ac: 'Apple Inc.',
                         0x0b05: 'ASUSTeK Computer Inc.',
                         0x0bda: 'Realtek',
                         0x2188: 'CalDigit',
                         0x8087: 'Intel',
                         0x1235: 'Focusrite',
-                        0x04b0: 'Nikon Corporation',
-                        0x04a9: 'Canon Inc.',
                     }
                     if (knownVendors[device.vendorId]) {
                         console.log(`  Known Vendor: ${knownVendors[device.vendorId]}`)

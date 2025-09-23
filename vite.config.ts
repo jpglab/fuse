@@ -39,7 +39,7 @@ export default defineConfig({
       '@core': resolve(__dirname, './src/core'),
       '@transport': resolve(__dirname, './src/transport'),
       '@factories': resolve(__dirname, './src/factories'),
-      '@client': resolve(__dirname, './src/client'),
+      '@api': resolve(__dirname, './src/api'),
       '@constants': resolve(__dirname, './src/constants'),
     },
   },

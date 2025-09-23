@@ -3,7 +3,18 @@
  * V7 Architecture - Type-safe with validation
  */
 
-import type { FormatDefinitionShape } from '@constants/validation-types'
+import type { HexCode } from '@constants/types'
+
+/**
+ * Format definition shape for validation
+ */
+type FormatDefinitionShape = Record<string, {
+  name: string
+  code: HexCode
+  description: string
+  fileExtension?: string
+  mimeType?: string
+}>
 
 /**
  * PTP Object Formats with type validation

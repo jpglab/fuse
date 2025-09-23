@@ -3,7 +3,17 @@
  * V7 Architecture - Type-safe with validation
  */
 
-import type { ResponseDefinitionShape } from '@constants/validation-types'
+import type { HexCode } from '@constants/types'
+
+/**
+ * Response definition shape for validation
+ */
+type ResponseDefinitionShape = Record<string, {
+  name: string
+  code: HexCode
+  description: string
+  recoverable?: boolean
+}>
 
 /**
  * PTP Response codes with type validation

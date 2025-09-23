@@ -1,4 +1,4 @@
-import { EndpointManagerInterface, EndpointConfiguration, EndpointType } from '@transport/interfaces/endpoint.interface'
+import { EndpointManagerInterface, EndpointConfiguration, EndpointType } from '@transport/interfaces/transport.interface'
 
 /**
  * USB endpoint manager implementation

@@ -1,4 +1,4 @@
-import { TransportOptions } from '@transport/interfaces/device.interface'
+import { TransportOptions } from '@transport/interfaces/transport.interface'
 
 /**
  * Camera connection options

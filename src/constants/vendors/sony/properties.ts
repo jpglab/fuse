@@ -5,13 +5,14 @@
 
 import { DataType } from '@constants/types'
 import { PTPProperties } from '@constants/ptp/properties'
+import { VendorIDs } from '@constants/vendors/vendor-ids'
 import type { HexCode } from '@constants/types'
 
 /**
  * Sony Device Constants
  */
 export const SonyConstants = {
-  VENDOR_ID: 0x054c,
+  VENDOR_ID: VendorIDs.SONY,
   PRODUCT_ID: 0x096f,
   PRODUCT_ID_ALPHA: 0x0e78,
   PROTOCOL_VERSION: 0x012c,
@@ -26,8 +27,8 @@ export const SonyProperties = {
   ...PTPProperties, // Start with PTP standard
   
   // Override PTP properties with Sony-specific implementations
-  F_NUMBER: {
-    name: 'F_NUMBER',
+  APERTURE: {
+    name: 'APERTURE',
     code: 0x5007,
     type: DataType.UINT16,
     unit: 'f-stop',
@@ -45,8 +46,8 @@ export const SonyProperties = {
     }
   },
   
-  EXPOSURE_INDEX: {
-    name: 'EXPOSURE_INDEX',
+  ISO: {
+    name: 'ISO',
     code: 0x500F,
     type: DataType.UINT32, // Sony uses UINT32 instead of UINT16
     unit: 'ISO',

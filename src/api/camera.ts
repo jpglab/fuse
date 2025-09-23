@@ -1,11 +1,11 @@
 import { TransportFactory } from '@transport/transport-factory'
 import { CameraFactory } from '@camera/camera-factory'
 import { CameraInterface } from '@camera/interfaces/camera.interface'
-import { TransportType, DeviceDescriptor } from '@transport/interfaces/device.interface'
-import { listCameras } from '@client/discovery'
-import { CameraOptions } from '@client/types'
-import { Photo } from '@client/photo'
-import { Frame } from '@client/frame'
+import { TransportType, DeviceDescriptor } from '@transport/interfaces/transport.interface'
+import { listCameras } from '@api/discovery'
+import { CameraOptions } from '@api/types'
+import { Photo } from '@api/photo'
+import { Frame } from '@api/frame'
 
 /**
  * High-level Camera API - simplified wrapper around GenericPTPCamera

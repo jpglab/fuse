@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { Camera, listCameras, watchCameras, DeviceProperty } from '../src/node'
+import { Camera, listCameras, watchCameras } from '../src/node'
+import { VendorIDs } from '@constants/vendors/vendor-ids'
 // ExposureMode enum not yet implemented
 const ExposureMode = {
     AUTO: 'auto',
@@ -52,14 +53,14 @@ describe('Client API', () => {
         it('should support stackable filters', async () => {
             const cameras = await listCameras({
                 vendor: 'sony',
-                usb: { vendorId: 0x054c },
+                usb: { vendorId: VendorIDs.SONY },
             })
             expect(Array.isArray(cameras)).toBe(true)
 
             cameras.forEach(camera => {
                 expect(camera.vendor.toLowerCase()).toBe('sony')
                 if (camera.usb) {
-                    expect(camera.usb.vendorId).toBe(0x054c)
+                    expect(camera.usb.vendorId).toBe(VendorIDs.SONY)
                 }
             })
         })
@@ -255,13 +256,13 @@ describe('Client API', () => {
             }
         })
 
-        it('should get properties using DeviceProperty enum', async () => {
+        it('should get properties using string names', async () => {
             if (!camera?.isConnected()) {
                 return
             }
 
             try {
-                const whiteBalance = await camera.getProperty(DeviceProperty.WHITE_BALANCE)
+                const whiteBalance = await camera.getProperty('WHITE_BALANCE')
                 expect(whiteBalance).toBeDefined()
             } catch (error) {
                 console.warn('White balance property not supported:', error)

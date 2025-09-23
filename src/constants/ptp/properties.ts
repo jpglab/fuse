@@ -95,8 +95,8 @@ export const PTPProperties = {
     writable: true
   },
   
-  F_NUMBER: {
-    name: 'F_NUMBER',
+  APERTURE: {
+    name: 'APERTURE',
     code: 0x5007,
     type: DataType.UINT16,
     unit: 'f-stop',
@@ -175,8 +175,8 @@ export const PTPProperties = {
     }
   },
   
-  EXPOSURE_TIME: {
-    name: 'EXPOSURE_TIME',
+  SHUTTER_SPEED: {
+    name: 'SHUTTER_SPEED',
     code: 0x500D,
     type: DataType.UINT32,
     unit: 'microseconds',
@@ -184,8 +184,8 @@ export const PTPProperties = {
     writable: true
   },
   
-  EXPOSURE_PROGRAM_MODE: {
-    name: 'EXPOSURE_PROGRAM_MODE',
+  EXPOSURE_MODE: {
+    name: 'EXPOSURE_MODE',
     code: 0x500E,
     type: DataType.UINT16,
     description: 'Exposure program mode',
@@ -201,8 +201,8 @@ export const PTPProperties = {
     }
   },
   
-  EXPOSURE_INDEX: {
-    name: 'EXPOSURE_INDEX',
+  ISO: {
+    name: 'ISO',
     code: 0x500F,
     type: DataType.UINT16,
     unit: 'ISO',

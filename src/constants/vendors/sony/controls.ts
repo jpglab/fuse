@@ -3,7 +3,17 @@
  * V7 Architecture - Type-safe with validation
  */
 
-import type { ControlDefinitionShape } from '@constants/validation-types'
+import type { HexCode } from '@constants/types'
+
+/**
+ * Control definition shape for validation
+ */
+type ControlDefinitionShape = Record<string, {
+  property: HexCode
+  value: HexCode
+  description: string
+  holdable?: boolean
+}>
 
 /**
  * Sony hardware controls with type validation

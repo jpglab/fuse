@@ -3,7 +3,16 @@
  * V7 Architecture - Type-safe with validation
  */
 
-import type { StorageTypeDefinitionShape } from '@constants/validation-types'
+import type { HexCode } from '@constants/types'
+
+/**
+ * Storage type definition shape for validation
+ */
+type StorageTypeDefinitionShape = Record<string, {
+  name: string
+  code: HexCode
+  description: string
+}>
 
 /**
  * PTP Storage Types with type validation

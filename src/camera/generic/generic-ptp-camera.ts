@@ -1,11 +1,12 @@
 import { ProtocolInterface } from '@core/ptp-protocol'
 import { CameraInterface, CameraInfo, StorageInfo } from '@camera/interfaces/camera.interface'
 import { LiveViewFrame } from '@camera/interfaces/liveview.interface'
-import { DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { DeviceDescriptor } from '@transport/interfaces/transport.interface'
 import { PTPOperations } from '@constants/ptp/operations'
 import { PTPResponses } from '@constants/ptp/responses'
 import { PTPProperties } from '@constants/ptp/properties'
-import { EventEmitter } from '@client/event-emitter'
+import { DataType } from '@constants/types'
+import { EventEmitter } from '@api/event-emitter'
 
 /**
  * Generic PTP camera implementation - Simplified V7 Architecture
@@ -224,25 +225,25 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     const view = new DataView(buffer)
     
     switch (dataType) {
-      case 0x0001: // UINT8
+      case DataType.UINT8:
         view.setUint8(0, value)
         return new Uint8Array(buffer, 0, 1)
-      case 0x0002: // INT8
+      case DataType.INT8:
         view.setInt8(0, value)
         return new Uint8Array(buffer, 0, 1)
-      case 0x0003: // UINT16
+      case DataType.UINT16:
         view.setUint16(0, value, true)
         return new Uint8Array(buffer, 0, 2)
-      case 0x0004: // INT16
+      case DataType.INT16:
         view.setInt16(0, value, true)
         return new Uint8Array(buffer, 0, 2)
-      case 0x0005: // UINT32
+      case DataType.UINT32:
         view.setUint32(0, value, true)
         return new Uint8Array(buffer, 0, 4)
-      case 0x0006: // INT32
+      case DataType.INT32:
         view.setInt32(0, value, true)
         return new Uint8Array(buffer, 0, 4)
-      case 0xFFFF: // STRING
+      case DataType.STRING:
         const encoder = new TextEncoder()
         const utf8 = encoder.encode(value)
         const result = new Uint8Array(2 + utf8.length)
@@ -261,19 +262,19 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
     
     switch (dataType) {
-      case 0x0001: // UINT8
+      case DataType.UINT8:
         return view.getUint8(0)
-      case 0x0002: // INT8
+      case DataType.INT8:
         return view.getInt8(0)
-      case 0x0003: // UINT16
+      case DataType.UINT16:
         return view.getUint16(0, true)
-      case 0x0004: // INT16
+      case DataType.INT16:
         return view.getInt16(0, true)
-      case 0x0005: // UINT32
+      case DataType.UINT32:
         return view.getUint32(0, true)
-      case 0x0006: // INT32
+      case DataType.INT32:
         return view.getInt32(0, true)
-      case 0xFFFF: // STRING
+      case DataType.STRING:
         if (data.length < 2) return ''
         const length = view.getUint16(0, true)
         const decoder = new TextDecoder()
