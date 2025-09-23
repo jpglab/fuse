@@ -3,7 +3,7 @@
  * Sony-specific image extraction and parsing utilities
  */
 
-import { findByteSequence } from '@core/buffers'
+import { findByteSequence, copySlice } from '@core/buffers'
 import { extractJPEG } from '@core/images'
 
 // Sony-specific constants
@@ -25,7 +25,7 @@ export function extractSonyLiveViewJPEG(data: Uint8Array): Uint8Array | null {
     return null
   }
 
-  const jpegData = data.slice(SONY_LIVEVIEW.HEADER_SIZE)
+  const jpegData = copySlice(data, SONY_LIVEVIEW.HEADER_SIZE)
 
   // Verify JPEG start marker
   if (jpegData.length < 2 || jpegData[0] !== 0xFF || jpegData[1] !== 0xD8) {

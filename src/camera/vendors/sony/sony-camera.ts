@@ -4,9 +4,10 @@ import { SonyAuthenticator } from '@camera/vendors/sony/sony-authenticator'
 import { SonyOperations } from '@constants/vendors/sony/operations'
 import { SonyProperties } from '@constants/vendors/sony/properties'
 import { PTPResponses } from '@constants/ptp/responses'
-import { encodePTPValue, decodePTPValue, extractPropertyFromResponse } from '@core/buffers'
+import { encodePTPValue, decodePTPValue, createDataView, copySlice } from '@core/buffers'
 import { extractSonyLiveViewJPEG } from '@camera/vendors/sony/sony-image-utils'
 import { parseJPEGDimensions } from '@core/images'
+import { HexCode } from '@constants/types'
 
 /**
  * Sony camera implementation - Simplified V7 Architecture
@@ -18,6 +19,30 @@ export class SonyCamera extends GenericPTPCamera {
     private readonly authenticator: SonyAuthenticator
   ) {
     super(protocol)
+  }
+
+  /**
+   * Extract a property value from Sony's all-properties response format
+   * @param data - Response data containing multiple properties
+   * @param propertyCode - Property code to search for
+   * @returns Property data or empty array if not found
+   */
+  private extractPropertyFromResponse(data: Uint8Array, propertyCode: HexCode): Uint8Array {
+    const view = createDataView(data)
+    let offset = 0
+
+    while (offset < data.length - 4) {
+      const code = view.getUint16(offset, true)
+      const size = view.getUint16(offset + 2, true)
+      
+      if (code === propertyCode) {
+        return copySlice(data, offset + 4, offset + 4 + size)
+      }
+      
+      offset += 4 + size
+    }
+
+    return new Uint8Array()
   }
 
   async connect(): Promise<void> {
@@ -65,11 +90,11 @@ export class SonyCamera extends GenericPTPCamera {
     }
 
     // Parse Sony's all-properties response to find our property
-    const value = extractPropertyFromResponse(response.data, property.code)
+    const value = this.extractPropertyFromResponse(response.data, property.code)
     
-    // Use property's decoder if available
-    if ('decoder' in property && typeof property.decoder === 'function') {
-      return property.decoder(value) as T
+    // Use property's decode if available
+    if ('decode' in property && typeof property.decode === 'function') {
+      return property.decode(value) as T
     }
 
     return decodePTPValue(value, property.type) as T
@@ -93,10 +118,10 @@ export class SonyCamera extends GenericPTPCamera {
       ? SonyOperations.CONTROL_DEVICE_PROPERTY.code
       : SonyOperations.SET_DEVICE_PROPERTY_VALUE.code
 
-    // Use property's encoder if available, or enum value if provided
+    // Use property's encode if available, or enum value if provided
     let encodedValue: Uint8Array
-    if ('encoder' in property && typeof property.encoder === 'function') {
-      encodedValue = property.encoder(value)
+    if ('encode' in property && typeof property.encode === 'function') {
+      encodedValue = property.encode(value)
     } else if ('enum' in property && property.enum && typeof value === 'string' && value in property.enum) {
       encodedValue = encodePTPValue(property.enum[value as keyof typeof property.enum], property.type)
     } else {

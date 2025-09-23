@@ -4,8 +4,8 @@
  */
 
 import { ContainerTypes, containerTypeToMessageType, PTP_CONTAINER, PTP_LIMITS, EVENT_LIMITS } from '@constants/ptp/containers'
-import { createDataView, parsePTPParameters } from '@core/buffers'
-import { Response, Event } from '@constants/types'
+import { createDataView, sliceToUint8Array, validateBufferLength } from '@core/buffers'
+import { Response, Event, HexCode } from '@constants/types'
 
 /**
  * Message builder interface for constructing and parsing PTP messages
@@ -17,7 +17,7 @@ export interface MessageBuilderInterface {
      * @param parameters - Operation parameters
      * @returns Encoded message
      */
-    buildCommand(operation: number, parameters?: number[]): Uint8Array
+    buildCommand(operation: HexCode, parameters?: HexCode[]): Uint8Array
 
     /**
      * Build a data message
@@ -25,7 +25,7 @@ export interface MessageBuilderInterface {
      * @param data - Data payload
      * @returns Encoded message
      */
-    buildData(operation: number, data: Uint8Array): Uint8Array
+    buildData(operation: HexCode, data: Uint8Array): Uint8Array
 
     /**
      * Parse a response message
@@ -69,6 +69,22 @@ export interface ParsedData {
 }
 
 /**
+ * Parse PTP parameters from a buffer
+ * @param view - DataView to read from
+ * @param offset - Starting offset
+ * @param count - Number of parameters to read
+ * @param paramSize - Size of each parameter in bytes (default: 4)
+ * @returns Array of parameter values
+ */
+function parsePTPParameters(view: DataView, offset: number, count: number, paramSize = 4): HexCode[] {
+  const parameters: HexCode[] = []
+  for (let i = 0; i < count; i++) {
+    parameters.push(view.getUint32(offset + i * paramSize, true))
+  }
+  return parameters
+}
+
+/**
  * PTP Message Builder implementation
  */
 export class PTPMessageBuilder implements MessageBuilderInterface {
@@ -88,11 +104,12 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
     /**
      * Build a command message
      */
-    buildCommand(operation: number, parameters: number[] = []): Uint8Array {
+    buildCommand(operation: HexCode, parameters: HexCode[] = []): Uint8Array {
         const paramCount = parameters.length
         const length = PTP_CONTAINER.HEADER_SIZE + paramCount * PTP_CONTAINER.PARAM_SIZE
         const buffer = new ArrayBuffer(length)
-        const view = new DataView(buffer)
+        const uint8Buffer = new Uint8Array(buffer)
+        const view = createDataView(uint8Buffer)
 
         // Container header
         view.setUint32(0, length, true) // Length
@@ -114,10 +131,11 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
     /**
      * Build a data message
      */
-    buildData(operation: number, data: Uint8Array): Uint8Array {
+    buildData(operation: HexCode, data: Uint8Array): Uint8Array {
         const length = PTP_CONTAINER.HEADER_SIZE + data.byteLength
         const buffer = new ArrayBuffer(length)
-        const view = new DataView(buffer)
+        const uint8Buffer = new Uint8Array(buffer)
+        const view = createDataView(uint8Buffer)
 
         // Container header
         view.setUint32(0, length, true) // Length
@@ -136,9 +154,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse a response message
      */
     parseResponse(data: Uint8Array): Response {
-        if (data.byteLength < PTP_CONTAINER.HEADER_SIZE) {
-            throw new Error('Invalid response: too short')
-        }
+        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid response')
 
         const view = createDataView(data)
 
@@ -169,9 +185,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse an event message
      */
     parseEvent(data: Uint8Array): Event {
-        if (data.byteLength < PTP_CONTAINER.HEADER_SIZE) {
-            throw new Error('Invalid event: too short')
-        }
+        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid event')
 
         const view = createDataView(data)
 
@@ -198,9 +212,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse data payload
      */
     parseData(data: Uint8Array): ParsedData {
-        if (data.byteLength < PTP_CONTAINER.HEADER_SIZE) {
-            throw new Error('Invalid data: too short')
-        }
+        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid data')
 
         const view = createDataView(data)
 
@@ -210,7 +222,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
         const transactionId = view.getUint32(8, true)
 
         // Extract payload (everything after header)
-        const payload = new Uint8Array(data.buffer, data.byteOffset + PTP_CONTAINER.HEADER_SIZE, data.byteLength - PTP_CONTAINER.HEADER_SIZE)
+        const payload = sliceToUint8Array(data, PTP_CONTAINER.HEADER_SIZE, data.byteLength - PTP_CONTAINER.HEADER_SIZE)
 
         return {
             sessionId: 0, // Session ID not in data container

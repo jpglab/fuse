@@ -10,7 +10,7 @@ import { PTPResponses } from '@constants/ptp/responses'
 import { PTPError } from '@constants/ptp/errors'
 import { PTP_LIMITS } from '@constants/ptp/containers'
 import { SonyOperations } from '@constants/vendors/sony/operations'
-import { Operation, Response, Event } from '@constants/types'
+import { Operation, Response, Event, HexCode } from '@constants/types'
 
 /**
  * PTP Protocol interface for protocol-level operations
@@ -20,7 +20,7 @@ export interface ProtocolInterface {
      * Open a new PTP session
      * @param sessionId - Session identifier
      */
-    openSession(sessionId: number): Promise<void>
+    openSession(sessionId: HexCode): Promise<void>
 
     /**
      * Close the current PTP session
@@ -43,7 +43,7 @@ export interface ProtocolInterface {
     /**
      * Get current session ID
      */
-    getSessionId(): number | null
+    getSessionId(): HexCode | null
 
     /**
      * Check if session is active
@@ -61,7 +61,7 @@ export type { Operation, Response, Event } from '@constants/types'
 export { MessageType } from '@constants/types'
 
 export class PTPProtocol implements ProtocolInterface {
-    private sessionId: number | null = null
+    private sessionId: HexCode | null = null
     private isOpen = false
 
     constructor(
@@ -72,7 +72,7 @@ export class PTPProtocol implements ProtocolInterface {
     /**
      * Open a new PTP session
      */
-    async openSession(sessionId: number): Promise<void> {
+    async openSession(sessionId: HexCode): Promise<void> {
         console.log(`PTP Protocol: Opening session with ID ${sessionId}`)
         if (this.isOpen) {
             console.log('PTP Protocol: Session already marked as open locally')
@@ -216,7 +216,7 @@ export class PTPProtocol implements ProtocolInterface {
     /**
      * Get current session ID
      */
-    getSessionId(): number | null {
+    getSessionId(): HexCode | null {
         return this.sessionId
     }
 
@@ -267,7 +267,7 @@ export class PTPProtocol implements ProtocolInterface {
     /**
      * Helper to send simple commands without data phase
      */
-    async sendCommand(code: number, parameters?: number[]): Promise<Response> {
+    async sendCommand(code: HexCode, parameters?: HexCode[]): Promise<Response> {
         return this.sendOperation({
             code,
             parameters,
@@ -278,7 +278,7 @@ export class PTPProtocol implements ProtocolInterface {
     /**
      * Helper to send commands that receive data
      */
-    async sendCommandReceiveData(code: number, parameters?: number[]): Promise<Response> {
+    async sendCommandReceiveData(code: HexCode, parameters?: HexCode[]): Promise<Response> {
         return this.sendOperation({
             code,
             parameters,
@@ -289,7 +289,7 @@ export class PTPProtocol implements ProtocolInterface {
     /**
      * Helper to send commands that send data
      */
-    async sendCommandWithData(code: number, parameters: number[], data: Uint8Array): Promise<Response> {
+    async sendCommandWithData(code: HexCode, parameters: HexCode[], data: Uint8Array): Promise<Response> {
         return this.sendOperation({
             code,
             parameters,

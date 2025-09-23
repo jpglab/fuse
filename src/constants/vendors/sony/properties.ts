@@ -5,6 +5,7 @@
 import { DataType, HexCode, PropertyDefinition } from '@constants/types'
 import { PTPProperties } from '@constants/ptp/properties'
 import { VendorIDs } from '@constants/vendors/vendor-ids'
+import { encodePTPValue } from '@core/buffers'
 
 /**
  * Sony Device Constants
@@ -38,7 +39,7 @@ export const SonyProperties = {
       const num = typeof value === 'string' 
         ? parseFloat(value.replace('f/', ''))
         : value
-      return Math.round(num * 100)
+      return encodePTPValue(Math.round(num * 100), DataType.UINT16)
     },
     decode: (value: HexCode | Uint8Array) => {
       const num = typeof value === 'number' ? value : 0
@@ -54,14 +55,19 @@ export const SonyProperties = {
     description: 'ISO sensitivity with Sony-specific auto modes',
     writable: true,
     encode: (value: string | number) => {
+      let numValue: number
       if (typeof value === 'string') {
-        if (value === 'AUTO' || value === 'ISO AUTO') return 0x00FFFFFF
-        if (value === 'MULTI_NR_AUTO') return 0x01FFFFFF
-        if (value === 'MULTI_NR_HIGH_AUTO') return 0x02FFFFFF
-        const match = value.match(/\d+/)
-        return match ? parseInt(match[0]) : 0
+        if (value === 'AUTO' || value === 'ISO AUTO') numValue = 0x00FFFFFF
+        else if (value === 'MULTI_NR_AUTO') numValue = 0x01FFFFFF
+        else if (value === 'MULTI_NR_HIGH_AUTO') numValue = 0x02FFFFFF
+        else {
+          const match = value.match(/\d+/)
+          numValue = match ? parseInt(match[0]) : 0
+        }
+      } else {
+        numValue = value
       }
-      return value
+      return encodePTPValue(numValue, DataType.UINT32)
     },
     decode: (value: HexCode | Uint8Array) => {
       const num = typeof value === 'number' ? value : 0
@@ -125,23 +131,24 @@ export const SonyProperties = {
     description: 'Sony-specific shutter speed encoding with bulb mode support',
     writable: true,
     encode: (value: string) => {
-      if (value === 'BULB') return 0x00000000
-      if (value === 'N/A') return 0xFFFFFFFF
-      
-      // Handle fractional format (e.g., "1/250")
-      if (value.startsWith('1/')) {
+      let numValue: number
+      if (value === 'BULB') numValue = 0x00000000
+      else if (value === 'N/A') numValue = 0xFFFFFFFF
+      else if (value.startsWith('1/')) {
+        // Handle fractional format (e.g., "1/250")
         const denom = parseInt(value.substring(2))
-        return (0x0001 << 16) | denom
+        numValue = (0x0001 << 16) | denom
+      } else {
+        // Handle seconds format (e.g., '1.5"' or "1.5")
+        const cleanValue = value.replace('"', '')
+        const seconds = parseFloat(cleanValue)
+        if (!isNaN(seconds)) {
+          numValue = (Math.round(seconds * 10) << 16) | 0x000A
+        } else {
+          numValue = 0xFFFFFFFF // N/A
+        }
       }
-      
-      // Handle seconds format (e.g., '1.5"' or "1.5")
-      const cleanValue = value.replace('"', '')
-      const seconds = parseFloat(cleanValue)
-      if (!isNaN(seconds)) {
-        return (Math.round(seconds * 10) << 16) | 0x000A
-      }
-      
-      return 0xFFFFFFFF // N/A
+      return encodePTPValue(numValue, DataType.UINT32)
     },
     decode: (value: HexCode | Uint8Array) => {
       const num = typeof value === 'number' ? value : 0
@@ -193,14 +200,19 @@ export const SonyProperties = {
     description: 'ISO sensitivity (main Sony property)',
     writable: true,
     encode: (value: string | number) => {
+      let numValue: number
       if (typeof value === 'string') {
-        if (value === 'AUTO' || value === 'ISO AUTO') return 0x00FFFFFF
-        if (value === 'MULTI_NR_AUTO') return 0x01FFFFFF
-        if (value === 'MULTI_NR_HIGH_AUTO') return 0x02FFFFFF
-        const match = value.match(/\d+/)
-        return match ? parseInt(match[0]) : 0
+        if (value === 'AUTO' || value === 'ISO AUTO') numValue = 0x00FFFFFF
+        else if (value === 'MULTI_NR_AUTO') numValue = 0x01FFFFFF
+        else if (value === 'MULTI_NR_HIGH_AUTO') numValue = 0x02FFFFFF
+        else {
+          const match = value.match(/\d+/)
+          numValue = match ? parseInt(match[0]) : 0
+        }
+      } else {
+        numValue = value
       }
-      return value
+      return encodePTPValue(numValue, DataType.UINT32)
     },
     decode: (value: HexCode | Uint8Array) => {
       const num = typeof value === 'number' ? value : 0
@@ -229,25 +241,7 @@ export const SonyProperties = {
       return 'ISO Unknown'
     }
   },
-  
-  ISO_SENSITIVITY_ALT2: {
-    name: 'ISO_SENSITIVITY_ALT2',
-    code: 0xD21F,
-    type: DataType.UINT32,
-    unit: 'ISO',
-    description: 'Alternative ISO property 2',
-    writable: true
-  },
-  
-  ISO_SENSITIVITY_ALT3: {
-    name: 'ISO_SENSITIVITY_ALT3',
-    code: 0xD220,
-    type: DataType.UINT32,
-    unit: 'ISO',
-    description: 'Alternative ISO property 3',
-    writable: true
-  },
-  
+
   LIVE_VIEW_STATUS: {
     name: 'LIVE_VIEW_STATUS',
     code: 0xD221,

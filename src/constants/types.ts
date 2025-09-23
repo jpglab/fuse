@@ -108,7 +108,7 @@ export interface Response {
     // Runtime fields
     sessionId?: number
     transactionId?: number
-    parameters?: number[]
+    parameters?: HexCode[]
     data?: Uint8Array
     raw?: Uint8Array
     type?: MessageType
@@ -145,8 +145,8 @@ export interface Property {
     writable?: boolean
     descriptor?: PropertyDescriptor<any>
     enum?: Record<string, HexCode>
-    encode?: (value: any) => HexCode | Uint8Array
-    decode?: (value: HexCode | Uint8Array) => any
+    encode?: (value: any) => Uint8Array
+    decode?: (value: Uint8Array) => any
 }
 
 /**
@@ -189,7 +189,6 @@ export interface Control {
     property: HexCode
     value: HexCode
     description: string
-    holdable?: boolean
 }
 
 // ============================================================================
@@ -230,12 +229,3 @@ export type FormatDefinition = Record<string, Format>
  * Control constants collection
  */
 export type ControlDefinition = Record<string, Control>
-
-// ============================================================================
-// Backwards Compatibility Aliases (will be removed in future)
-// ============================================================================
-
-export type OperationDefinitionShape = OperationDefinition
-export type ResponseDefinitionShape = ResponseDefinition
-export type EventDefinitionShape = EventDefinition
-export type PropertyDefinitionShape = PropertyDefinition

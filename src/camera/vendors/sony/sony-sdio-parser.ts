@@ -1,6 +1,6 @@
 import { extractSDIOStreamJPEG } from '@camera/vendors/sony/sony-image-utils'
 import { parseJPEGDimensions } from '@core/images'
-import { createDataView } from '@core/buffers'
+import { createDataView, copySlice } from '@core/buffers'
 import { SonyConstants } from '@constants/vendors/sony/properties'
 
 /**
@@ -55,7 +55,7 @@ export class SonySDIOParser {
     // Copy data to frame buffer
     const dataStart = SonyConstants.SDIO_HEADER_SIZE
     const dataEnd = Math.min(chunk.length, dataStart + packetSize)
-    const data = chunk.slice(dataStart, dataEnd)
+    const data = copySlice(chunk, dataStart, dataEnd)
     
     if (this.frameSize + data.length <= this.frameBuffer.length) {
       this.frameBuffer.set(data, this.frameSize)
@@ -64,7 +64,7 @@ export class SonySDIOParser {
 
     // Check if we have a complete frame
     if (packetType === 0x02) { // End of frame
-      const completeFrame = this.frameBuffer.slice(0, this.frameSize)
+      const completeFrame = copySlice(this.frameBuffer, 0, this.frameSize)
       return this.parseSDIOData(completeFrame)
     }
 

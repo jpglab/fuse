@@ -88,9 +88,9 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
       throw new Error(`No data received for property ${propertyName}`)
     }
 
-    // Use property's decoder if available
-    if ('decoder' in property && typeof property.decoder === 'function') {
-      return property.decoder(response.data) as T
+    // Use property's decode if available
+    if ('decode' in property && typeof property.decode === 'function') {
+      return property.decode(response.data) as T
     }
 
     // Basic decoding for common types
@@ -103,9 +103,9 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
       throw new Error(`Unknown property: ${String(propertyName)}`)
     }
 
-    // Use property's encoder if available
-    const data = ('encoder' in property && typeof property.encoder === 'function')
-      ? property.encoder(value)
+    // Use property's encode if available
+    const data = ('encode' in property && typeof property.encode === 'function')
+      ? property.encode(value)
       : encodePTPValue(value, property.type)
 
     const response = await this.protocol.sendOperation({

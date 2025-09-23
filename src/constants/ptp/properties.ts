@@ -3,6 +3,7 @@
  */
 
 import { DataType, PropertyForm, PropertyDefinition, HexCode } from '@constants/types'
+import { encodePTPValue } from '@core/buffers'
 
 /**
  * PTP standard property definitions with type validation
@@ -103,7 +104,7 @@ export const PTPProperties = {
       const num = typeof value === 'string' 
         ? parseFloat(value.replace('f/', ''))
         : value
-      return Math.round(num * 100)
+      return encodePTPValue(Math.round(num * 100), DataType.UINT16)
     },
     decode: (value: HexCode | Uint8Array) => {
       const num = typeof value === 'number' ? value : 0

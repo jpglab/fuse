@@ -45,7 +45,7 @@ export { TransportType, EndpointType } from '@transport/interfaces/transport.int
 export { DataType } from '@constants/types'
 export { ContainerTypes } from '@constants/ptp/containers'
 export type { ContainerType } from '@constants/ptp/containers'
-export type { PropertyDescriptor, Property, PropertyDefinitionShape } from '@constants/types'
+export type { PropertyDescriptor, Property, PropertyDefinition } from '@constants/types'
 
 // ============================================================================
 // Errors

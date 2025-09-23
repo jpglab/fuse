@@ -3,7 +3,7 @@
  * Provides low-level buffer manipulation for PTP protocol data
  */
 
-import { DataType } from '@constants/types'
+import { DataType, DataTypeValue } from '@constants/types'
 
 /**
  * Create a DataView from a Uint8Array with proper offset handling
@@ -16,6 +16,7 @@ export function createDataView(data: Uint8Array): DataView {
 
 /**
  * Convert Uint8Array to Buffer for Node.js compatibility
+ * Used primarily in transport layer and API layer for Frame/Photo classes
  * @param data - Uint8Array to convert
  * @returns Buffer
  */
@@ -25,6 +26,7 @@ export function toBuffer(data: Uint8Array): Buffer {
 
 /**
  * Convert Buffer or any array-like to Uint8Array
+ * Used primarily in transport layer for cross-platform compatibility
  * @param data - Buffer or array-like to convert
  * @returns Uint8Array
  */
@@ -38,9 +40,10 @@ export function toUint8Array(data: Buffer | ArrayBuffer | ArrayLike<number>): Ui
 /**
  * Encode a value into a buffer based on PTP data type
  */
-export function encodePTPValue(value: any, dataType: number): Uint8Array {
+export function encodePTPValue(value: any, dataType: DataTypeValue): Uint8Array {
   const buffer = new ArrayBuffer(8)
-  const view = new DataView(buffer)
+  const uint8Buffer = new Uint8Array(buffer)
+  const view = createDataView(uint8Buffer)
 
   switch (dataType) {
     case DataType.UINT8:
@@ -77,7 +80,7 @@ export function encodePTPValue(value: any, dataType: number): Uint8Array {
 /**
  * Decode a value from a buffer based on PTP data type
  */
-export function decodePTPValue(data: Uint8Array, dataType: number): any {
+export function decodePTPValue(data: Uint8Array, dataType: DataTypeValue): any {
   if (!data || data.length === 0) return null
 
   const view = createDataView(data)
@@ -98,7 +101,7 @@ export function decodePTPValue(data: Uint8Array, dataType: number): any {
     case DataType.STRING:
       const length = view.getUint16(0, true)
       const decoder = new TextDecoder()
-      return decoder.decode(data.slice(2, 2 + length))
+      return decoder.decode(copySlice(data, 2, 2 + length))
     default:
       return data
   }
@@ -126,41 +129,37 @@ export function findByteSequence(buffer: Uint8Array, sequence: readonly number[]
 }
 
 /**
- * Parse PTP parameters from a buffer
- * @param view - DataView to read from
- * @param offset - Starting offset
- * @param count - Number of parameters to read
- * @param paramSize - Size of each parameter in bytes (default: 4)
- * @returns Array of parameter values
+ * Create a Uint8Array view from a slice of another Uint8Array with proper offset handling (no copy)
+ * @param data - Source Uint8Array
+ * @param offset - Starting offset in the source array
+ * @param length - Number of bytes to slice
+ * @returns New Uint8Array view of the sliced data (no copy)
  */
-export function parsePTPParameters(view: DataView, offset: number, count: number, paramSize = 4): number[] {
-  const parameters: number[] = []
-  for (let i = 0; i < count; i++) {
-    parameters.push(view.getUint32(offset + i * paramSize, true))
-  }
-  return parameters
+export function sliceToUint8Array(data: Uint8Array, offset: number, length: number): Uint8Array {
+  return new Uint8Array(data.buffer, data.byteOffset + offset, length)
 }
 
 /**
- * Extract a property value from Sony's all-properties response format
- * @param data - Response data containing multiple properties
- * @param propertyCode - Property code to search for
- * @returns Property data or empty array if not found
+ * Copy a slice of Uint8Array to a new Uint8Array
+ * @param data - Source Uint8Array
+ * @param start - Starting offset in the source array
+ * @param end - Ending offset in the source array (optional)
+ * @returns New Uint8Array with copied data
  */
-export function extractPropertyFromResponse(data: Uint8Array, propertyCode: number): Uint8Array {
-  const view = createDataView(data)
-  let offset = 0
-
-  while (offset < data.length - 4) {
-    const code = view.getUint16(offset, true)
-    const size = view.getUint16(offset + 2, true)
-    
-    if (code === propertyCode) {
-      return data.slice(offset + 4, offset + 4 + size)
-    }
-    
-    offset += 4 + size
-  }
-
-  return new Uint8Array()
+export function copySlice(data: Uint8Array, start: number, end?: number): Uint8Array {
+  return new Uint8Array(data.slice(start, end))
 }
+
+/**
+ * Validate buffer has minimum required length
+ * @param data - Buffer to validate
+ * @param minLength - Minimum required length
+ * @param context - Context string for error message
+ * @throws Error if buffer is too short
+ */
+export function validateBufferLength(data: Uint8Array, minLength: number, context: string): void {
+  if (data.byteLength < minLength) {
+    throw new Error(`${context}: buffer too short (${data.byteLength} < ${minLength})`)
+  }
+}
+
