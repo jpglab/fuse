@@ -186,3 +186,35 @@ export function parsePTPUint32Array(data: Uint8Array, offset = 0): number[] {
   return values
 }
 
+/**
+ * Get the size in bytes of a PTP data type value
+ * For fixed-size types, returns the size directly
+ * For variable-size types like STRING, reads the size from the data
+ * @param dataType - The PTP data type
+ * @param data - The data buffer (required for variable-size types)
+ * @returns Size in bytes
+ */
+export function getPTPValueSize(dataType: DataTypeValue, data?: Uint8Array): number {
+  switch (dataType) {
+    case DataType.UINT8:
+    case DataType.INT8:
+      return 1
+    case DataType.UINT16:
+    case DataType.INT16:
+      return 2
+    case DataType.UINT32:
+    case DataType.INT32:
+      return 4
+    case DataType.UINT64:
+    case DataType.INT64:
+      return 8
+    case DataType.STRING:
+      if (!data || data.length < 2) return 0
+      const view = createDataView(data)
+      const length = view.getUint16(0, true)
+      return 2 + length
+    default:
+      return 0
+  }
+}
+

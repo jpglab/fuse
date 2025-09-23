@@ -96,9 +96,9 @@ export const SonyProperties = {
         // In the case of the shutter speed is displayed as "Fraction Number" on the camera, the numerator is fixed 0x0001. (e.g. 0x000103E8: 0x0001 (means 1) / 0x03E8 (means 1000) = 1/1000)
         // Note: min: 0x00000000, max: 0xFFFFFFFF, step: 0x00000001
 
-        encode: (value: string) => {
-            if (value === 'BULB') return 0x00000000
-            if (value === 'nothing to display') return 0xffffffff
+        encode: (value: string): Uint8Array => {
+            if (value === 'BULB') return encodePTPValue(0x00000000, DataType.UINT16)
+            if (value === 'nothing to display') return encodePTPValue(0xffffffff, DataType.UINT16)
             if (value.includes('/')) {
                 const [numerator, denominator] = value.split('/')
                 return encodePTPValue(
@@ -491,6 +491,30 @@ export const SonyProperties = {
         enum: {
             DISABLE: 0x0001,
             ENABLE: 0x0002,
+        },
+    },
+
+    SHUTTER_HALF_RELEASE_BUTTON: {
+        name: 'SHUTTER_HALF_RELEASE_BUTTON',
+        code: 0xd2c1,
+        type: DataType.UINT16,
+        description: 'Control shutter half-release (S1) (focus) button.',
+        writable: true,
+        enum: {
+            UP: 0x0001,
+            DOWN: 0x0002,
+        },
+    },
+
+    SHUTTER_RELEASE_BUTTON: {
+        name: 'SHUTTER_RELEASE_BUTTON',
+        code: 0xd2c2,
+        type: DataType.UINT16,
+        description: 'Control shutter release (S2) button.',
+        writable: true,
+        enum: {
+            UP: 0x0001,
+            DOWN: 0x0002,
         },
     },
 } as const satisfies PropertyDefinition<any>

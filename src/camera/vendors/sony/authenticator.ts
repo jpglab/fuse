@@ -1,7 +1,8 @@
 import { ProtocolInterface } from '@core/protocol'
 import { SonyOperations } from '@constants/vendors/sony/operations'
 import { PTPResponses } from '@constants/ptp/responses'
-import { createDataView } from '@core/buffers'
+import { createDataView, encodePTPValue } from '@core/buffers'
+import { DataType } from '@constants/types'
 
 /**
  * Interface for Sony authentication
@@ -53,7 +54,11 @@ export class SonyAuthenticator implements SonyAuthenticatorInterface {
         console.log(`Sony Auth: Sending SDIO_CONNECT for phase ${phase}`)
         const response = await protocol.sendOperation({
             code: SonyOperations.SDIO_CONNECT.code,
-            parameters: [phase, 0, 0], // Phase, KeyCode1, KeyCode2
+            parameters: [
+                encodePTPValue(phase, DataType.UINT32),
+                encodePTPValue(0, DataType.UINT32),
+                encodePTPValue(0, DataType.UINT32),
+            ], // Phase, KeyCode1, KeyCode2
         })
         console.log(`Sony Auth: SDIO_CONNECT response: 0x${response.code.toString(16)}`)
 

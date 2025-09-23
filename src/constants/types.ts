@@ -87,7 +87,7 @@ export interface Operation {
               type: DataTypeValue
               description: string
           }>
-        | number[] // Can be parameter definitions OR runtime values
+        | number[] | Uint8Array[] | HexCode[] // Can be parameter definitions OR runtime values
     expectsData?: boolean
     respondsWithData?: boolean
     dataDescription?: string

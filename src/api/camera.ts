@@ -27,7 +27,7 @@ export class Camera {
 
     async connect(): Promise<void> {
         const isWebEnvironment = typeof window !== 'undefined'
-        
+
         if (!this.options.usb?.productId && !this.options.ip?.host) {
             if (isWebEnvironment) {
                 // In browser, we need to request device permission
@@ -42,7 +42,8 @@ export class Camera {
                     const filters = []
                     if (this.options.vendor) filters.push(`vendor: ${this.options.vendor}`)
                     if (this.options.model) filters.push(`model: ${this.options.model}`)
-                    if (this.options.usb?.vendorId) filters.push(`USB vendor: 0x${this.options.usb.vendorId.toString(16)}`)
+                    if (this.options.usb?.vendorId)
+                        filters.push(`USB vendor: 0x${this.options.usb.vendorId.toString(16)}`)
 
                     const filterMsg = filters.length > 0 ? ` matching filters: ${filters.join(', ')}` : ''
                     throw new Error(`No cameras found${filterMsg}. Please connect a camera via USB.`)
@@ -79,14 +80,14 @@ export class Camera {
         if (deviceInfo) {
             this.deviceDescriptor = {
                 ...this.deviceDescriptor,
-                ...deviceInfo
+                ...deviceInfo,
             }
         }
 
         const detectedVendor =
             this.options.vendor ||
             this.cameraFactory.detectVendor(this.options.usb?.vendorId || 0, this.options.usb?.productId || 0)
-        
+
         this.cameraImplementation = this.cameraFactory.create(detectedVendor, transport)
         await this.cameraImplementation.connect()
 
@@ -100,7 +101,7 @@ export class Camera {
                 serialNumber: cameraInfo.serialNumber,
                 firmwareVersion: cameraInfo.firmwareVersion,
                 batteryLevel: cameraInfo.batteryLevel,
-                vendor: cameraInfo.manufacturer
+                vendor: cameraInfo.manufacturer,
             }
         } catch (error) {
             console.warn('[Camera] Could not retrieve camera info:', error)
@@ -108,7 +109,7 @@ export class Camera {
                 this.deviceDescriptor = {
                     manufacturer: detectedVendor,
                     model: 'Unknown',
-                    vendor: detectedVendor
+                    vendor: detectedVendor,
                 }
             }
         }
@@ -136,21 +137,16 @@ export class Camera {
         return this.cameraImplementation.getStorageInfo()
     }
 
-    async captureImage(): Promise<void> {
+    async captureImage(): Promise<Uint8Array | null> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         return this.cameraImplementation.captureImage()
     }
 
-    async captureLiveViewFrame() {
+    async captureLiveView() {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
-        const frame = await this.cameraImplementation.captureLiveViewFrame()
+        const frame = await this.cameraImplementation.captureLiveView()
         if (frame) {
-            return new Frame(
-                toBuffer(frame.data),
-                frame.width,
-                frame.height,
-                frame.timestamp
-            )
+            return new Frame(toBuffer(frame.data), frame.width, frame.height, frame.timestamp)
         }
         return null
     }

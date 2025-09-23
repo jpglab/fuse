@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { PTPProtocol } from '@core/ptp-protocol'
 import { PTPMessageBuilder } from '@core/ptp-message-builder'
-import { SonyCamera } from '@camera/vendors/sony/sony-camera'
-import { SonyAuthenticator } from '@camera/vendors/sony/sony-authenticator'
+import { SonyCamera } from '@camera/vendors/sony/camera'
+import { SonyAuthenticator } from '@camera/vendors/sony/authenticator'
 import { SonyConstants } from '@constants/vendors/sony/properties'
 import { TransportFactory } from '@transport/transport-factory'
 import * as fs from 'fs'
@@ -140,7 +140,7 @@ describe('SonyCamera', () => {
     })
 
     it('should capture a live view frame', async () => {
-        const frame = await camera.captureLiveViewFrame()
+        const frame = await camera.captureLiveView()
         
         if (frame && frame.data && frame.data.length > 0) {
             console.log(`✅ Live view frame: ${frame.width}x${frame.height} (${frame.data.length} bytes)`)

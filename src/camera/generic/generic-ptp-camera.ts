@@ -55,7 +55,7 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     return this.connected
   }
 
-  async captureImage(): Promise<void> {
+  async captureImage(): Promise<Uint8Array | null> {
     const response = await this.protocol.sendOperation({
       code: PTPOperations.INITIATE_CAPTURE.code,
       parameters: [0, 0], // storageId: 0, objectFormat: 0
@@ -64,8 +64,9 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     if (response.code !== PTPResponses.OK.code) {
       throw new Error(`Capture failed: 0x${response.code.toString(16)}`)
     }
-    
+
     this.emit('capture')
+    return response.data || null
   }
 
   async getDeviceProperty<T = any>(propertyName: keyof typeof PTPProperties): Promise<T> {
@@ -201,7 +202,7 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     return storageInfos
   }
 
-  async captureLiveViewFrame(): Promise<any> {
+  async captureLiveView(): Promise<any> {
     // Generic PTP doesn't have standard live view
     // Subclasses should override this for vendor-specific implementations
     return null

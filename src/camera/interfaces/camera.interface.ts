@@ -43,7 +43,7 @@ export interface CameraInterface {
   /**
    * Capture a still image
    */
-  captureImage(): Promise<void>
+  captureImage(): Promise<Uint8Array | null>
 
   /**
    * Get a device property value by name (type-safe with constants)
@@ -72,7 +72,7 @@ export interface CameraInterface {
    * Capture a live view frame
    * Automatically handles enabling/disabling live view as needed
    */
-  captureLiveViewFrame(): Promise<any>
+  captureLiveView(): Promise<any>
 }
 
 /**

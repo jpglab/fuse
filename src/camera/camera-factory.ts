@@ -5,8 +5,8 @@ import { PTPMessageBuilder } from '@core/messages'
 import { PTPProtocol } from '@core/protocol'
 import { CameraInterface } from '@camera/interfaces/camera.interface'
 import { GenericPTPCamera } from '@camera/generic/generic-ptp-camera'
-import { SonyCamera } from '@camera/vendors/sony/sony-camera'
-import { SonyAuthenticator } from '@camera/vendors/sony/sony-authenticator'
+import { SonyCamera } from '@camera/vendors/sony/camera'
+import { SonyAuthenticator } from '@camera/vendors/sony/authenticator'
 import { VendorIDs } from '@constants/vendors/vendor-ids'
 
 /**
