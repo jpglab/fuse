@@ -2,6 +2,7 @@
 import { readdir, readFile } from 'fs/promises'
 import { join, relative } from 'path'
 import * as ts from 'typescript'
+import * as fs from 'fs'
 
 interface ExportInfo {
     file: string
@@ -318,7 +319,7 @@ async function main() {
     // Save to JSON file for further analysis
     const exports = analyzer.getExports()
     const outputPath = join(process.cwd(), 'export-analysis.json')
-    await Bun.write(outputPath, JSON.stringify(exports, null, 2))
+    await fs.promises.writeFile(outputPath, JSON.stringify(exports, null, 2))
     console.log(`\nDetailed export data saved to: ${outputPath}`)
 }
 

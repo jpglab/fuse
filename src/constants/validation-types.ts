@@ -3,7 +3,7 @@
  * V7 Architecture - Type-safe with validation
  */
 
-import type { HexCode, DataType } from '@constants/types'
+import type { HexCode, DataTypeValue } from '@constants/types'
 
 /**
  * Response definition shape for validation
@@ -23,7 +23,7 @@ export type OperationDefinitionShape = Record<string, {
   description: string
   parameters?: Array<{
     name: string
-    type: DataType
+    type: DataTypeValue
     description: string
   }>
   hasDataPhase?: boolean
@@ -38,7 +38,7 @@ export type EventDefinitionShape = Record<string, {
   description: string
   parameters?: Array<{
     name: string
-    type: DataType
+    type: DataTypeValue
     description: string
   }>
 }>

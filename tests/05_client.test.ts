@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { Camera, listCameras, watchCameras, DeviceProperty } from '../src'
+import { Camera, listCameras, watchCameras, DeviceProperty } from '../src/node'
 // ExposureMode enum not yet implemented
 const ExposureMode = {
     AUTO: 'auto',
@@ -317,7 +317,7 @@ describe('Client API', () => {
 
     describe('Photo Class', () => {
         it('should save photo to disk', async () => {
-            const { Photo } = await import('../src')
+            const { Photo } = await import('../src/node')
             const testData = Buffer.from('test photo data')
             const photo = new Photo(testData, 'test.jpg')
 
@@ -347,7 +347,7 @@ describe('Client API', () => {
 
     describe('Frame Class', () => {
         it('should create frame with properties', async () => {
-            const { Frame } = await import('../src')
+            const { Frame } = await import('../src/node')
             const testData = Buffer.from('frame data')
             const frame = new Frame(testData, 1920, 1080)
 

@@ -11,7 +11,13 @@
     "line": 8,
     "name": "GenericPTPCamera",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "extends": [
+      "EventEmitter"
+    ],
+    "implements": [
+      "CameraInterface"
+    ]
   },
   {
     "file": "camera/interfaces/camera.interface.ts",
@@ -151,14 +157,20 @@
     "line": 22,
     "name": "SonyAuthenticator",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "implements": [
+      "SonyAuthenticatorInterface"
+    ]
   },
   {
     "file": "camera/vendors/sony/sony-camera.ts",
-    "line": 9,
+    "line": 7,
     "name": "SonyCamera",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "extends": [
+      "GenericPTPCamera"
+    ]
   },
   {
     "file": "camera/vendors/sony/sony-sdio-parser.ts",
@@ -169,24 +181,33 @@
   },
   {
     "file": "client/camera.ts",
-    "line": 11,
+    "line": 8,
     "name": "Camera",
     "type": "class",
     "exportType": "named"
   },
   {
     "file": "client/discovery.ts",
-    "line": 9,
+    "line": 10,
     "name": "listCameras",
     "type": "function",
-    "exportType": "named"
+    "exportType": "named",
+    "parameters": [
+      "options: CameraOptions"
+    ],
+    "returnType": "Promise<DeviceDescriptor[]>"
   },
   {
     "file": "client/discovery.ts",
-    "line": 31,
+    "line": 32,
     "name": "watchCameras",
     "type": "function",
-    "exportType": "named"
+    "exportType": "named",
+    "parameters": [
+      "callback: (cameras: DeviceDescriptor[]) => void",
+      "options: CameraOptions"
+    ],
+    "returnType": "() => void"
   },
   {
     "file": "client/event-emitter.ts",
@@ -214,98 +235,86 @@
     "line": 1,
     "name": "CameraOptions",
     "type": "interface",
-    "exportType": "named"
-  },
-  {
-    "file": "client/types.ts",
-    "line": 17,
-    "name": "CameraDescriptor",
-    "type": "interface",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 1,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 7,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 8,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 9,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 12,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/index.ts",
-    "line": 15,
-    "name": "Sony",
-    "type": "namespace",
-    "exportType": "namespace"
+    "exportType": "named",
+    "extends": [
+      "TransportOptions"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 6,
     "name": "PropertyDescriptor",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "T"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 19,
     "name": "BaseProperty",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "TName extends string = string",
+      "TValue = any"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 32,
     "name": "EnumProperty",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "TName extends string = string",
+      "TEnum extends string = string"
+    ],
+    "extends": [
+      "BaseProperty<TName, TEnum>"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 40,
     "name": "CustomProperty",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "TName extends string = string",
+      "TInput = any",
+      "TOutput = TInput"
+    ],
+    "extends": [
+      "BaseProperty<TName, TInput>"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 49,
     "name": "NumericProperty",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "TName extends string = string"
+    ],
+    "extends": [
+      "BaseProperty<TName, number>"
+    ]
   },
   {
     "file": "constants/property-types.ts",
     "line": 55,
     "name": "StringProperty",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "typeParams": [
+      "TName extends string = string"
+    ],
+    "extends": [
+      "BaseProperty<TName, string>"
+    ]
   },
   {
     "file": "constants/property-types.ts",
@@ -340,7 +349,10 @@
     "line": 16,
     "name": "PTPError",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "extends": [
+      "Error"
+    ]
   },
   {
     "file": "constants/ptp/events.ts",
@@ -368,97 +380,6 @@
     "line": 184,
     "name": "PTPFormatDefinitions",
     "type": "type",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 1,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 7,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 8,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 9,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 10,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 11,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 12,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 24,
-    "name": "PTPOperationMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 27,
-    "name": "PTPResponseMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 28,
-    "name": "PTPEventMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 29,
-    "name": "PTPPropertyMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 30,
-    "name": "PTPFormatMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/ptp/index.ts",
-    "line": 31,
-    "name": "PTPStorageMapper",
-    "type": "const",
     "exportType": "named"
   },
   {
@@ -595,27 +516,6 @@
     "exportType": "named"
   },
   {
-    "file": "constants/utilities.ts",
-    "line": 6,
-    "name": "ConstantMapper",
-    "type": "class",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/utilities.ts",
-    "line": 91,
-    "name": "PropertyMapper",
-    "type": "class",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/utilities.ts",
-    "line": 214,
-    "name": "ControlMapper",
-    "type": "class",
-    "exportType": "named"
-  },
-  {
     "file": "constants/validation-types.ts",
     "line": 6,
     "name": "ResponseDefinitionShape",
@@ -686,76 +586,6 @@
     "exportType": "named"
   },
   {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 1,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 7,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 8,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 9,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 10,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 21,
-    "name": "SonyPropertyMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 24,
-    "name": "SonyOperationMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 25,
-    "name": "SonyEventMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 26,
-    "name": "SonyResponseMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
-    "file": "constants/vendors/sony/index.ts",
-    "line": 27,
-    "name": "SonyControlMapper",
-    "type": "const",
-    "exportType": "named"
-  },
-  {
     "file": "constants/vendors/sony/operations.ts",
     "line": 7,
     "name": "SonyOperations",
@@ -805,95 +635,94 @@
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 1,
+    "file": "core/ptp-message-builder.ts",
+    "line": 8,
     "name": "MessageBuilderInterface",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 51,
-    "name": "ParsedResponse",
-    "type": "interface",
-    "exportType": "named"
-  },
-  {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 62,
-    "name": "ParsedEvent",
-    "type": "interface",
-    "exportType": "named"
-  },
-  {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 72,
+    "file": "core/ptp-message-builder.ts",
+    "line": 60,
     "name": "ParsedData",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 81,
-    "name": "MessageType",
-    "type": "enum",
-    "exportType": "named"
-  },
-  {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 91,
+    "file": "core/ptp-message-builder.ts",
+    "line": 69,
     "name": "DataConverterInterface",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/message-builder.interface.ts",
-    "line": 110,
-    "name": "PTPDataType",
-    "type": "enum",
+    "file": "core/ptp-message-builder.ts",
+    "line": 88,
+    "name": "ParsedResponse",
+    "type": "type",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/protocol.interface.ts",
-    "line": 1,
+    "file": "core/ptp-message-builder.ts",
+    "line": 91,
+    "name": "ParsedEvent",
+    "type": "type",
+    "exportType": "named"
+  },
+  {
+    "file": "core/ptp-message-builder.ts",
+    "line": 92,
+    "name": "PTPMessageBuilder",
+    "type": "class",
+    "exportType": "named",
+    "implements": [
+      "MessageBuilderInterface"
+    ]
+  },
+  {
+    "file": "core/ptp-protocol.ts",
+    "line": 11,
     "name": "ProtocolInterface",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/protocol.interface.ts",
-    "line": 43,
+    "file": "core/ptp-protocol.ts",
+    "line": 55,
     "name": "Operation",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/protocol.interface.ts",
-    "line": 54,
+    "file": "core/ptp-protocol.ts",
+    "line": 66,
     "name": "Response",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/interfaces/protocol.interface.ts",
-    "line": 65,
+    "file": "core/ptp-protocol.ts",
+    "line": 79,
+    "name": "MessageType",
+    "type": "enum",
+    "exportType": "named"
+  },
+  {
+    "file": "core/ptp-protocol.ts",
+    "line": 89,
     "name": "Event",
     "type": "interface",
     "exportType": "named"
   },
   {
-    "file": "core/ptp/ptp-message-builder.ts",
-    "line": 13,
-    "name": "PTPMessageBuilder",
-    "type": "class",
-    "exportType": "named"
-  },
-  {
-    "file": "core/ptp/ptp-protocol.ts",
-    "line": 10,
+    "file": "core/ptp-protocol.ts",
+    "line": 99,
     "name": "PTPProtocol",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "implements": [
+      "ProtocolInterface"
+    ]
   },
   {
     "file": "exports.ts",
@@ -925,281 +754,232 @@
   },
   {
     "file": "exports.ts",
-    "line": 10,
-    "name": "CameraDescriptor",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "exports.ts",
-    "line": 15,
+    "line": 14,
     "name": "DeviceProperty",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 18,
+    "line": 17,
     "name": "CameraInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 19,
+    "line": 18,
     "name": "TransportInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 20,
+    "line": 19,
     "name": "DeviceDescriptor",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 20,
+    "line": 19,
     "name": "TransportType",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 20,
+    "line": 19,
     "name": "TransportOptions",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 21,
+    "line": 20,
     "name": "ProtocolInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 21,
+    "line": 20,
     "name": "Operation",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 21,
+    "line": 20,
     "name": "Response",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 21,
+    "line": 20,
     "name": "Event",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 23,
-    "name": "CameraInfo",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "exports.ts",
-    "line": 23,
+    "line": 22,
     "name": "StorageInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 24,
+    "line": 23,
     "name": "ImageInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 24,
+    "line": 23,
     "name": "ImageData",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 25,
+    "line": 24,
     "name": "ImageFormat",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 26,
+    "line": 25,
     "name": "LiveViewFrame",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 27,
+    "line": 26,
     "name": "FrameMetadata",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 28,
+    "line": 27,
     "name": "FocusInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 29,
+    "line": 28,
     "name": "FocusArea",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 30,
+    "line": 29,
     "name": "ExposureInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 31,
+    "line": 30,
     "name": "WhiteBalanceInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 32,
+    "line": 31,
     "name": "FaceInfo",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 35,
+    "line": 34,
     "name": "FrameFormat",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 35,
+    "line": 34,
     "name": "FocusStatus",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 38,
+    "line": 37,
     "name": "MessageBuilderInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 39,
-    "name": "ParsedResponse",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "exports.ts",
-    "line": 40,
-    "name": "ParsedEvent",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "exports.ts",
-    "line": 41,
+    "line": 38,
     "name": "ParsedData",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 42,
+    "line": 39,
     "name": "DataConverterInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 45,
+    "line": 42,
     "name": "MessageType",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 45,
-    "name": "PTPDataType",
+    "line": 43,
+    "name": "DataType",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 48,
+    "line": 46,
     "name": "EndpointManagerInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 49,
+    "line": 47,
     "name": "EndpointConfiguration",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 50,
+    "line": 48,
     "name": "DeviceFinderInterface",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 53,
+    "line": 51,
     "name": "DeviceSearchCriteria",
     "type": "variable",
     "exportType": "named"
   },
   {
     "file": "exports.ts",
-    "line": 54,
+    "line": 52,
     "name": "EndpointType",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "index.ts",
-    "line": 1,
-    "name": "*",
-    "type": "namespace",
-    "exportType": "namespace"
-  },
-  {
-    "file": "index.ts",
-    "line": 9,
-    "name": "listCameras",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "index.ts",
-    "line": 9,
-    "name": "watchCameras",
     "type": "variable",
     "exportType": "named"
   },
@@ -1233,21 +1013,21 @@
   },
   {
     "file": "transport/interfaces/device.interface.ts",
-    "line": 26,
+    "line": 41,
     "name": "DeviceSearchCriteria",
     "type": "interface",
     "exportType": "named"
   },
   {
     "file": "transport/interfaces/device.interface.ts",
-    "line": 38,
+    "line": 53,
     "name": "TransportType",
     "type": "enum",
     "exportType": "named"
   },
   {
     "file": "transport/interfaces/device.interface.ts",
-    "line": 47,
+    "line": 61,
     "name": "TransportOptions",
     "type": "interface",
     "exportType": "named"
@@ -1282,14 +1062,7 @@
   },
   {
     "file": "transport/interfaces/transport.interface.ts",
-    "line": 5,
-    "name": "TransportType",
-    "type": "variable",
-    "exportType": "named"
-  },
-  {
-    "file": "transport/interfaces/transport.interface.ts",
-    "line": 5,
+    "line": 4,
     "name": "TransportInterface",
     "type": "interface",
     "exportType": "named"
@@ -1303,38 +1076,53 @@
   },
   {
     "file": "transport/transport-factory.ts",
-    "line": 64,
+    "line": 61,
     "name": "USBTransportOptions",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "extends": [
+      "TransportOptions"
+    ]
   },
   {
     "file": "transport/transport-factory.ts",
-    "line": 73,
+    "line": 70,
     "name": "IPTransportOptions",
     "type": "interface",
-    "exportType": "named"
+    "exportType": "named",
+    "extends": [
+      "TransportOptions"
+    ]
   },
   {
     "file": "transport/usb/usb-device-finder.ts",
     "line": 2,
     "name": "USBDeviceFinder",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "implements": [
+      "DeviceFinderInterface"
+    ]
   },
   {
     "file": "transport/usb/usb-endpoint-manager.ts",
     "line": 1,
     "name": "USBEndpointManager",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "implements": [
+      "EndpointManagerInterface"
+    ]
   },
   {
     "file": "transport/usb/usb-transport.ts",
     "line": 3,
     "name": "USBTransport",
     "type": "class",
-    "exportType": "named"
+    "exportType": "named",
+    "implements": [
+      "TransportInterface"
+    ]
   },
   {
     "file": "web.ts",

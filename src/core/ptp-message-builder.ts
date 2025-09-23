@@ -5,7 +5,6 @@
 
 import { Response, Event, MessageType } from '@core/ptp-protocol'
 import { ContainerTypes, ContainerType } from '@constants/ptp/container-types'
-import { DataType } from '@constants/types'
 
 /**
  * Message builder interface for constructing and parsing PTP messages
@@ -67,29 +66,6 @@ export interface ParsedData {
     transactionId: number
     payload: Uint8Array
 }
-
-/**
- * Data converter interface for type conversions
- */
-export interface DataConverterInterface {
-    /**
-     * Convert value to PTP format
-     * @param value - Value to convert
-     * @param dataType - Target data type
-     */
-    toPTPFormat(value: unknown, dataType: DataType): Uint8Array
-
-    /**
-     * Convert from PTP format
-     * @param data - PTP formatted data
-     * @param dataType - Source data type
-     */
-    fromPTPFormat(data: Uint8Array, dataType: DataType): unknown
-}
-
-// For backwards compatibility during migration:
-export type ParsedResponse = Response
-export type ParsedEvent = Event
 
 /**
  * PTP Message Builder implementation

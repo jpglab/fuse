@@ -63,7 +63,7 @@ export class TransportFactory {
 /**
  * USB transport options
  */
-export interface USBTransportOptions extends TransportOptions {
+interface USBTransportOptions extends TransportOptions {
     interfaceNumber?: number
     alternateInterface?: number
     claimInterface?: boolean
@@ -72,7 +72,7 @@ export interface USBTransportOptions extends TransportOptions {
 /**
  * IP transport options
  */
-export interface IPTransportOptions extends TransportOptions {
+interface IPTransportOptions extends TransportOptions {
     address: string
     port: number
     protocol?: 'tcp' | 'udp'

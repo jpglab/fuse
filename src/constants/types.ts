@@ -33,7 +33,7 @@ export const DataType = {
   STRING: 0xFFFF,
 } as const
 
-export type DataType = typeof DataType[keyof typeof DataType]
+export type DataTypeValue = typeof DataType[keyof typeof DataType]
 
 /**
  * Property form types
@@ -44,7 +44,7 @@ export const PropertyForm = {
   ENUM: 0x02,
 } as const
 
-export type PropertyForm = typeof PropertyForm[keyof typeof PropertyForm]
+export type PropertyFormValue = typeof PropertyForm[keyof typeof PropertyForm]
 
 /**
  * Property access types
@@ -54,4 +54,4 @@ export const PropertyAccess = {
   READ_WRITE: 0x01,
 } as const
 
-export type PropertyAccess = typeof PropertyAccess[keyof typeof PropertyAccess]
+export type PropertyAccessValue = typeof PropertyAccess[keyof typeof PropertyAccess]
