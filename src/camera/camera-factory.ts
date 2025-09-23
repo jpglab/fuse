@@ -1,6 +1,6 @@
 import { TransportInterface } from '@transport/interfaces/transport.interface'
 import { ProtocolInterface } from '@core/protocol'
-import { MessageBuilderInterface } from '@core/messages'
+import { MessageBuilderInterface, MessageParserInterface } from '@core/messages'
 import { PTPMessageBuilder } from '@core/messages'
 import { PTPProtocol } from '@core/protocol'
 import { CameraInterface } from '@camera/interfaces/camera.interface'
@@ -123,7 +123,7 @@ export class CameraFactory {
   /**
    * Create a message builder for PTP protocol
    */
-  protected createMessageBuilder(): MessageBuilderInterface {
+  protected createMessageBuilder(): MessageBuilderInterface & MessageParserInterface {
     return new PTPMessageBuilder()
   }
 
@@ -132,7 +132,7 @@ export class CameraFactory {
    * @param transport - Transport interface
    * @param messageBuilder - Message builder
    */
-  protected createProtocol(transport: TransportInterface, messageBuilder: MessageBuilderInterface): ProtocolInterface {
+  protected createProtocol(transport: TransportInterface, messageBuilder: MessageBuilderInterface & MessageParserInterface): ProtocolInterface {
     return new PTPProtocol(transport, messageBuilder)
   }
 }

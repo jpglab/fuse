@@ -1,5 +1,7 @@
 import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { EndpointManagerInterface, EndpointType, DeviceFinderInterface, DeviceDescriptor, TransportType } from '@transport/interfaces/transport.interface'
+import { EndpointManagerInterface, EndpointType } from '@transport/interfaces/endpoint.interface'
+import { DeviceFinderInterface, DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { TransportType } from '@transport/interfaces/transport-types'
 import { USB_LIMITS } from '@constants/ptp/containers'
 import { toBuffer, toUint8Array } from '@core/buffers'
 

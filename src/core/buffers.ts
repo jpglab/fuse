@@ -101,7 +101,7 @@ export function decodePTPValue(data: Uint8Array, dataType: DataTypeValue): any {
     case DataType.STRING:
       const length = view.getUint16(0, true)
       const decoder = new TextDecoder()
-      return decoder.decode(copySlice(data, 2, 2 + length))
+      return decoder.decode(sliceBuffer(data, 2, 2 + length))
     default:
       return data
   }
@@ -129,39 +129,38 @@ export function findByteSequence(buffer: Uint8Array, sequence: readonly number[]
 }
 
 /**
- * Create a Uint8Array view from a slice of another Uint8Array with proper offset handling (no copy)
- * @param data - Source Uint8Array
- * @param offset - Starting offset in the source array
- * @param length - Number of bytes to slice
- * @returns New Uint8Array view of the sliced data (no copy)
- */
-export function viewSlice(data: Uint8Array, offset: number, length: number): Uint8Array {
-  return new Uint8Array(data.buffer, data.byteOffset + offset, length)
-}
-
-/**
- * Copy a slice of Uint8Array to a new Uint8Array
+ * Slice a Uint8Array with options for copying or creating a view
  * @param data - Source Uint8Array
  * @param start - Starting offset in the source array
- * @param end - Ending offset in the source array (optional)
- * @returns New Uint8Array with copied data
+ * @param end - Ending offset or length (depending on copy mode)
+ * @param options - { copy: boolean } - Whether to copy data (default: true)
+ * @returns New Uint8Array (copy or view based on options)
  */
-export function copySlice(data: Uint8Array, start: number, end?: number): Uint8Array {
-  return new Uint8Array(data.slice(start, end))
+export function sliceBuffer(data: Uint8Array, start: number, end?: number, options: { copy?: boolean } = { copy: true }): Uint8Array {
+  if (options.copy !== false) {
+    // Copy mode (default) - end is the ending offset
+    return new Uint8Array(data.slice(start, end))
+  } else {
+    // View mode - end is the length
+    const length = end !== undefined ? end : data.byteLength - start
+    return new Uint8Array(data.buffer, data.byteOffset + start, length)
+  }
 }
 
 /**
- * Validate buffer has minimum required length
- * @param data - Buffer to validate
- * @param minLength - Minimum required length
- * @param context - Context string for error message
- * @throws Error if buffer is too short
+ * @deprecated Use sliceBuffer with { copy: false } option instead
  */
-export function validateBufferLength(data: Uint8Array, minLength: number, context: string): void {
-  if (data.byteLength < minLength) {
-    throw new Error(`${context}: buffer too short (${data.byteLength} < ${minLength})`)
-  }
+export function viewSlice(data: Uint8Array, offset: number, length: number): Uint8Array {
+  return sliceBuffer(data, offset, length, { copy: false })
 }
+
+/**
+ * @deprecated Use sliceBuffer with { copy: true } option instead
+ */
+export function copySlice(data: Uint8Array, start: number, end?: number): Uint8Array {
+  return sliceBuffer(data, start, end, { copy: true })
+}
+
 
 /**
  * Parse a PTP array of UINT32 values

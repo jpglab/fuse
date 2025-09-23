@@ -5,13 +5,6 @@
 import { DeviceDescriptor } from './device.interface'
 import { TransportType } from './transport-types'
 
-// Re-export commonly used interfaces for backward compatibility
-export type { DeviceDescriptor, DeviceSearchCriteria, DeviceFinderInterface } from './device.interface'
-export type { EndpointManagerInterface, EndpointConfiguration } from './endpoint.interface'
-export { EndpointType } from './endpoint.interface'
-export { TransportType } from './transport-types'
-export type { TransportOptions } from './transport-types'
-
 /**
  * Transport layer interface for device communication
  */

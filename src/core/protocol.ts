@@ -4,7 +4,7 @@
  */
 
 import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { MessageBuilderInterface } from '@core/messages'
+import { MessageBuilderInterface, MessageParserInterface } from '@core/messages'
 import { PTPOperations } from '@constants/ptp/operations'
 import { PTPResponses } from '@constants/ptp/responses'
 import { PTPError } from '@constants/ptp/errors'
@@ -56,9 +56,6 @@ export interface ProtocolInterface {
     reset(): Promise<void>
 }
 
-// Re-export types from constants for convenience
-export type { Operation, Response, Event } from '@constants/types'
-export { MessageType } from '@constants/types'
 
 export class PTPProtocol implements ProtocolInterface {
     private sessionId: HexCode | null = null
@@ -66,7 +63,7 @@ export class PTPProtocol implements ProtocolInterface {
 
     constructor(
         private readonly transport: TransportInterface,
-        private readonly messageBuilder: MessageBuilderInterface
+        private readonly messageBuilder: MessageBuilderInterface & MessageParserInterface
     ) {}
 
     /**

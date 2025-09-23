@@ -1,4 +1,4 @@
-import { DeviceFinderInterface, DeviceSearchCriteria, DeviceDescriptor } from '@transport/interfaces/transport.interface'
+import { DeviceFinderInterface, DeviceSearchCriteria, DeviceDescriptor } from '@transport/interfaces/device.interface'
 
 /**
  * USB device finder implementation

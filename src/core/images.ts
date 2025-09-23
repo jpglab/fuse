@@ -3,7 +3,7 @@
  * Generic JPEG parsing and extraction utilities
  */
 
-import { findByteSequence, createDataView, copySlice } from '@core/buffers'
+import { findByteSequence, createDataView, sliceBuffer } from '@core/buffers'
 
 // JPEG markers
 export const JPEG_MARKERS = {
@@ -27,7 +27,7 @@ export function extractJPEG(data: Uint8Array, startOffset = 0): Uint8Array | nul
   if (jpegEnd === -1) return null
 
   // Include the end marker
-  return copySlice(data, jpegStart, jpegEnd + 2)
+  return sliceBuffer(data, jpegStart, jpegEnd + 2)
 }
 
 /**
@@ -45,7 +45,7 @@ export function parseJPEGDimensions(jpegData: Uint8Array): { width: number; heig
     }
   }
 
-  const slicedData = copySlice(jpegData, sof0, sof0 + 9)
+  const slicedData = sliceBuffer(jpegData, sof0, sof0 + 9)
   const view = createDataView(slicedData)
   const height = view.getUint16(5, false) // Big-endian in JPEG
   const width = view.getUint16(7, false)  // Big-endian in JPEG

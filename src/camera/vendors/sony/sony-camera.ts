@@ -4,7 +4,7 @@ import { SonyAuthenticator } from '@camera/vendors/sony/sony-authenticator'
 import { SonyOperations } from '@constants/vendors/sony/operations'
 import { SonyProperties } from '@constants/vendors/sony/properties'
 import { PTPResponses } from '@constants/ptp/responses'
-import { encodePTPValue, decodePTPValue, createDataView, copySlice } from '@core/buffers'
+import { encodePTPValue, decodePTPValue, createDataView, sliceBuffer } from '@core/buffers'
 import { extractSonyLiveViewJPEG } from '@camera/vendors/sony/sony-image-utils'
 import { parseJPEGDimensions } from '@core/images'
 import { HexCode } from '@constants/types'
@@ -36,7 +36,7 @@ export class SonyCamera extends GenericPTPCamera {
       const size = view.getUint16(offset + 2, true)
       
       if (code === propertyCode) {
-        return copySlice(data, offset + 4, offset + 4 + size)
+        return sliceBuffer(data, offset + 4, offset + 4 + size)
       }
       
       offset += 4 + size

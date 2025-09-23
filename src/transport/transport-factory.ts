@@ -1,5 +1,7 @@
 import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { TransportType, TransportOptions, DeviceFinderInterface, EndpointManagerInterface } from '@transport/interfaces/transport.interface'
+import { TransportType, TransportOptions } from '@transport/interfaces/transport-types'
+import { DeviceFinderInterface } from '@transport/interfaces/device.interface'
+import { EndpointManagerInterface } from '@transport/interfaces/endpoint.interface'
 
 /**
  * Transport factory for creating transport implementations

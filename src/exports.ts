@@ -19,7 +19,7 @@ export type { CameraInterface, CameraOptions, StorageInfo } from '@camera/interf
 // Core Layer
 // ============================================================================
 export type { ProtocolInterface } from '@core/protocol'
-export type { MessageBuilderInterface } from '@core/messages'
+export type { MessageBuilderInterface, MessageParserInterface } from '@core/messages'
 export type { Operation, Response, Event } from '@constants/types'
 export { MessageType } from '@constants/types'
 
@@ -29,15 +29,16 @@ export { MessageType } from '@constants/types'
 export type { TransportInterface } from '@transport/interfaces/transport.interface'
 export type {
     DeviceDescriptor,
-    TransportOptions,
     DeviceSearchCriteria,
-} from '@transport/interfaces/transport.interface'
+    DeviceFinderInterface,
+} from '@transport/interfaces/device.interface'
 export type {
     EndpointManagerInterface,
     EndpointConfiguration,
-    DeviceFinderInterface,
-} from '@transport/interfaces/transport.interface'
-export { TransportType, EndpointType } from '@transport/interfaces/transport.interface'
+} from '@transport/interfaces/endpoint.interface'
+export { EndpointType } from '@transport/interfaces/endpoint.interface'
+export { TransportType } from '@transport/interfaces/transport-types'
+export type { TransportOptions } from '@transport/interfaces/transport-types'
 
 // ============================================================================
 // Constants

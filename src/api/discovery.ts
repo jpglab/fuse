@@ -3,7 +3,7 @@
  * Automatically handles Node.js (USB) and browser (WebUSB) environments
  */
 import { CameraOptions } from '@camera/interfaces/camera.interface'
-import { DeviceDescriptor } from '@transport/interfaces/transport.interface'
+import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 
 // Runtime environment detection
 const isNode = typeof window === 'undefined'

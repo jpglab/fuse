@@ -4,11 +4,20 @@
  */
 
 import { ContainerTypes, containerTypeToMessageType, PTP_CONTAINER, PTP_LIMITS, EVENT_LIMITS } from '@constants/ptp/containers'
-import { createDataView, viewSlice, validateBufferLength } from '@core/buffers'
+import { createDataView, sliceBuffer } from '@core/buffers'
 import { Response, Event, HexCode } from '@constants/types'
 
 /**
- * Message builder interface for constructing and parsing PTP messages
+ * Validate buffer has minimum required length (private utility)
+ */
+function validateBufferLength(data: Uint8Array, minLength: number, context: string): void {
+  if (data.byteLength < minLength) {
+    throw new Error(`${context}: buffer too short (${data.byteLength} < ${minLength})`)
+  }
+}
+
+/**
+ * Message builder interface for constructing PTP messages
  */
 export interface MessageBuilderInterface {
     /**
@@ -27,6 +36,21 @@ export interface MessageBuilderInterface {
      */
     buildData(operation: HexCode, data: Uint8Array): Uint8Array
 
+    /**
+     * Get next transaction ID
+     */
+    getNextTransactionId(): number
+
+    /**
+     * Reset transaction ID (for new sessions)
+     */
+    resetTransactionId(): void
+}
+
+/**
+ * Message parser interface for parsing PTP messages
+ */
+export interface MessageParserInterface {
     /**
      * Parse a response message
      * @param data - Raw response data
@@ -47,16 +71,6 @@ export interface MessageBuilderInterface {
      * @returns Parsed data
      */
     parseData(data: Uint8Array): ParsedData
-
-    /**
-     * Get next transaction ID
-     */
-    getNextTransactionId(): number
-
-    /**
-     * Reset transaction ID (for new sessions)
-     */
-    resetTransactionId(): void
 }
 
 /**
@@ -85,9 +99,50 @@ function parsePTPParameters(view: DataView, offset: number, count: number, param
 }
 
 /**
+ * Generic message parser for PTP containers
+ * @param data - Raw message data
+ * @param messageType - Type of message being parsed
+ * @param maxParamBytes - Maximum parameter bytes allowed
+ * @returns Parsed message object
+ */
+function parseGenericMessage(data: Uint8Array, messageType: string, maxParamBytes: number): {
+  code: HexCode,
+  transactionId: number,
+  parameters: HexCode[],
+  payload?: Uint8Array
+} {
+  validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, `Invalid ${messageType}`)
+  
+  const view = createDataView(data)
+  const length = view.getUint32(0, true)
+  view.getUint16(4, true) // Container type (not used in generic parser)
+  const code = view.getUint16(6, true)
+  const transactionId = view.getUint32(8, true)
+  
+  // Parse parameters if present
+  const paramBytes = length - PTP_CONTAINER.HEADER_SIZE
+  const parameters = (paramBytes > 0 && paramBytes <= maxParamBytes)
+    ? parsePTPParameters(view, PTP_CONTAINER.HEADER_SIZE, paramBytes / PTP_CONTAINER.PARAM_SIZE)
+    : []
+  
+  // For data messages, extract payload
+  let payload: Uint8Array | undefined
+  if (messageType === 'data') {
+    payload = sliceBuffer(data, PTP_CONTAINER.HEADER_SIZE, data.byteLength, { copy: false })
+  }
+  
+  return {
+    code,
+    transactionId,
+    parameters,
+    ...(payload && { payload })
+  }
+}
+
+/**
  * PTP Message Builder implementation
  */
-export class PTPMessageBuilder implements MessageBuilderInterface {
+export class PTPMessageBuilder implements MessageBuilderInterface, MessageParserInterface {
     private transactionId = 0
 
     /**
@@ -154,29 +209,16 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse a response message
      */
     parseResponse(data: Uint8Array): Response {
-        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid response')
-
+        const parsed = parseGenericMessage(data, 'response', PTP_CONTAINER.MAX_PARAM_BYTES)
         const view = createDataView(data)
-
-        const length = view.getUint32(0, true)
         const type = view.getUint16(4, true)
-        const code = view.getUint16(6, true)
-        const transactionId = view.getUint32(8, true)
-
-        // Parse parameters if present
-        const paramBytes = length - PTP_CONTAINER.HEADER_SIZE
-        const parameters = (paramBytes > 0 && paramBytes <= PTP_CONTAINER.MAX_PARAM_BYTES)
-            ? parsePTPParameters(view, PTP_CONTAINER.HEADER_SIZE, paramBytes / PTP_CONTAINER.PARAM_SIZE)
-            : []
-
-        // Map container type to message type
         const messageType = containerTypeToMessageType(type)
-
+        
         return {
-            code,
+            code: parsed.code,
             sessionId: 0, // Session ID not in response container
-            transactionId,
-            parameters,
+            transactionId: parsed.transactionId,
+            parameters: parsed.parameters,
             type: messageType,
         }
     }
@@ -185,26 +227,13 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse an event message
      */
     parseEvent(data: Uint8Array): Event {
-        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid event')
-
-        const view = createDataView(data)
-
-        const length = view.getUint32(0, true)
-        view.getUint16(4, true) // Should be EVENT_BLOCK
-        const code = view.getUint16(6, true)
-        const transactionId = view.getUint32(8, true)
-
-        // Parse parameters if present
-        const paramBytes = length - PTP_CONTAINER.HEADER_SIZE
-        const parameters = (paramBytes > 0 && paramBytes <= EVENT_LIMITS.MAX_PARAM_BYTES)
-            ? parsePTPParameters(view, PTP_CONTAINER.HEADER_SIZE, paramBytes / PTP_CONTAINER.PARAM_SIZE)
-            : []
-
+        const parsed = parseGenericMessage(data, 'event', EVENT_LIMITS.MAX_PARAM_BYTES)
+        
         return {
-            code,
+            code: parsed.code,
             sessionId: 0, // Session ID not in event container
-            transactionId,
-            parameters,
+            transactionId: parsed.transactionId,
+            parameters: parsed.parameters,
         }
     }
 
@@ -212,22 +241,12 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
      * Parse data payload
      */
     parseData(data: Uint8Array): ParsedData {
-        validateBufferLength(data, PTP_CONTAINER.HEADER_SIZE, 'Invalid data')
-
-        const view = createDataView(data)
-
-        view.getUint32(0, true) // Length
-        view.getUint16(4, true) // Should be DATA_BLOCK
-        view.getUint16(6, true) // Code
-        const transactionId = view.getUint32(8, true)
-
-        // Extract payload (everything after header)
-        const payload = viewSlice(data, PTP_CONTAINER.HEADER_SIZE, data.byteLength - PTP_CONTAINER.HEADER_SIZE)
-
+        const parsed = parseGenericMessage(data, 'data', 0)
+        
         return {
             sessionId: 0, // Session ID not in data container
-            transactionId,
-            payload,
+            transactionId: parsed.transactionId,
+            payload: parsed.payload!,
         }
     }
 
