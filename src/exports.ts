@@ -7,8 +7,7 @@ export { Camera } from './client/camera'
 export { Photo } from './client/photo'
 export { Frame } from './client/frame'
 export type {
-    CameraOptions,
-    CameraDescriptor,
+    CameraOptions
 } from './client/types'
 
 // Property constants for advanced usage
@@ -18,9 +17,9 @@ export { DeviceProperty } from '@camera/properties/device-properties'
 export type { CameraInterface } from '@camera/interfaces/camera.interface'
 export type { TransportInterface } from '@transport/interfaces/transport.interface'
 export type { DeviceDescriptor, TransportType, TransportOptions } from '@transport/interfaces/device.interface'
-export type { ProtocolInterface, Operation, Response, Event } from '@core/interfaces/protocol.interface'
+export type { ProtocolInterface, Operation, Response, Event } from '@core/ptp-protocol'
 // Export camera layer types
-export type { CameraInfo, StorageInfo } from '@camera/interfaces/camera.interface'
+export type { StorageInfo } from '@camera/interfaces/camera.interface'
 export type { ImageInfo, ImageData } from '@camera/interfaces/image.interface'
 export { ImageFormat } from '@camera/interfaces/image.interface'
 export type {
@@ -37,12 +36,11 @@ export { FrameFormat, FocusStatus } from '@camera/interfaces/liveview.interface'
 // Export core layer types
 export type {
     MessageBuilderInterface,
-    ParsedResponse,
-    ParsedEvent,
     ParsedData,
     DataConverterInterface,
-} from '@core/interfaces/message-builder.interface'
-export { MessageType, PTPDataType } from '@core/interfaces/message-builder.interface'
+} from '@core/ptp-message-builder'
+export { MessageType } from '@core/ptp-protocol'
+export { DataType } from '@constants/types'
 
 // Export transport layer types
 export type {

@@ -38,9 +38,6 @@ export class TransportFactory {
                 return await this.createUSBTransport(options as USBTransportOptions)
             case TransportType.IP:
                 return await this.createIPTransport(options as IPTransportOptions)
-            case TransportType.BLUETOOTH:
-                // TODO: Not implemented in old architecture
-                throw new Error('Bluetooth transport not implemented in old architecture')
             default:
                 throw new Error(`Unknown transport type: ${type as string}`)
         }

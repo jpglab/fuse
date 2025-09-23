@@ -58,7 +58,7 @@ describe('USB Transport', () => {
                 console.log(`\nDevice #${index + 1}:`)
                 console.log(`  VID:PID: 0x${vendorHex}:0x${productHex} (${device.vendorId}:${device.productId})`)
                 console.log(`  Manufacturer: ${device.manufacturer || 'Not available'}`)
-                console.log(`  Product: ${device.product || 'Not available'}`)
+                console.log(`  Product: ${device.model || 'Not available'}`)
                 console.log(`  Serial Number: ${device.serialNumber || 'Not available'}`)
 
                 if (VERBOSE) {
@@ -144,7 +144,7 @@ describe('USB Transport', () => {
             console.log(`Found ${devices.length} Sony PTP device(s)`)
 
             // Find a camera with 6700 in the name
-            let camera = devices.find(d => d.product?.includes('6700'))
+            let camera = devices.find(d => d.model?.includes('6700'))
 
             // If no 6700, just use the first Sony PTP device
             if (!camera && devices.length > 0) {
@@ -157,7 +157,7 @@ describe('USB Transport', () => {
                 console.log('\nSony PTP Camera Details:')
                 console.log(`  Vendor ID: 0x${camera.vendorId.toString(16).padStart(4, '0')} (${camera.vendorId})`)
                 console.log(`  Product ID: 0x${camera.productId.toString(16).padStart(4, '0')} (${camera.productId})`)
-                console.log(`  Product Name: ${camera.product || 'Not available (need to open device)'}`)
+                console.log(`  Product Name: ${camera.model || 'Not available (need to open device)'}`)
                 console.log(`  Manufacturer: ${camera.manufacturer || 'Not available (need to open device)'}`)
                 console.log(`  Serial Number: ${camera.serialNumber || 'Not available (need to open device)'}`)
 

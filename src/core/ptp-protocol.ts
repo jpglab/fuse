@@ -3,11 +3,98 @@
  * Handles PTP protocol operations with injected transport
  */
 
-import { ProtocolInterface, Operation, Response, Event } from '@core/interfaces/protocol.interface'
 import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { MessageBuilderInterface } from '@core/interfaces/message-builder.interface'
+import { MessageBuilderInterface } from '@core/ptp-message-builder'
 import { PTPOperations, PTPResponses, PTPError } from '@constants/ptp'
 import { SonyOperations } from '@constants/vendors/sony'
+
+/**
+ * PTP Protocol interface for protocol-level operations
+ */
+export interface ProtocolInterface {
+    /**
+     * Open a new PTP session
+     * @param sessionId - Session identifier
+     */
+    openSession(sessionId: number): Promise<void>
+
+    /**
+     * Close the current PTP session
+     */
+    closeSession(): Promise<void>
+
+    /**
+     * Send a PTP operation
+     * @param operation - Operation to send
+     * @returns Response from the operation
+     */
+    sendOperation(operation: Operation): Promise<Response>
+
+    /**
+     * Receive a PTP event
+     * @returns Event data
+     */
+    receiveEvent(): Promise<Event>
+
+    /**
+     * Get current session ID
+     */
+    getSessionId(): number | null
+
+    /**
+     * Check if session is active
+     */
+    isSessionOpen(): boolean
+
+    /**
+     * Reset the protocol state
+     */
+    reset(): Promise<void>
+}
+
+/**
+ * PTP Operation
+ */
+export interface Operation {
+    code: number
+    parameters?: number[]
+    data?: Uint8Array
+    hasDataPhase?: boolean
+    maxDataLength?: number // Maximum expected data length for data-in operations
+}
+
+/**
+ * PTP Response - unified structure for both parsed and raw responses
+ */
+export interface Response {
+    code: number
+    sessionId: number
+    transactionId: number
+    parameters?: number[]
+    data?: Uint8Array
+    raw?: Uint8Array  // Optional raw message bytes
+    type?: MessageType // Optional message type for parsed responses
+}
+
+/**
+ * Message type enumeration (moved from message-builder.interface.ts)
+ */
+export enum MessageType {
+    COMMAND = 1,
+    DATA = 2,
+    RESPONSE = 3,
+    EVENT = 4,
+}
+
+/**
+ * PTP Event
+ */
+export interface Event {
+    code: number
+    sessionId: number
+    transactionId: number
+    parameters?: number[]
+}
 
 export class PTPProtocol implements ProtocolInterface {
     private sessionId: number | null = null

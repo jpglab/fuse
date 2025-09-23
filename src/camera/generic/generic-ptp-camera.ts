@@ -1,32 +1,56 @@
-import { ProtocolInterface } from '../../core/interfaces/protocol.interface'
+import { ProtocolInterface } from '../../core/ptp-protocol'
 import { CameraInterface, CameraInfo, StorageInfo } from '../interfaces/camera.interface'
 import { LiveViewFrame } from '../interfaces/liveview.interface'
+import { DeviceDescriptor } from '../../transport/interfaces/device.interface'
 import { 
   PTPOperations, 
   PTPResponses, 
   PTPProperties
 } from '@constants'
+import { EventEmitter } from '../../client/event-emitter'
 
 /**
  * Generic PTP camera implementation - Simplified V7 Architecture
- * Core operations only, direct constant usage
+ * Combines core PTP operations with high-level convenience methods
  */
-export class GenericPTPCamera implements CameraInterface {
+export class GenericPTPCamera extends EventEmitter implements CameraInterface {
   protected sessionId = 1
   protected connected = false
+  protected deviceInfo?: DeviceDescriptor
 
   constructor(
-    protected readonly protocol: ProtocolInterface
-  ) {}
+    protected readonly protocol: ProtocolInterface,
+    deviceInfo?: DeviceDescriptor
+  ) {
+    super()
+    this.deviceInfo = deviceInfo
+  }
 
   async connect(): Promise<void> {
     await this.protocol.openSession(this.sessionId)
     this.connected = true
+    
+    // Update device info with camera-specific details
+    try {
+      const cameraInfo = await this.getCameraInfo()
+      if (this.deviceInfo) {
+        this.deviceInfo.manufacturer = cameraInfo.manufacturer
+        this.deviceInfo.model = cameraInfo.model
+        this.deviceInfo.serialNumber = cameraInfo.serialNumber
+        this.deviceInfo.firmwareVersion = cameraInfo.firmwareVersion
+        this.deviceInfo.batteryLevel = cameraInfo.batteryLevel
+      }
+    } catch (error) {
+      console.warn('[GenericPTPCamera] Could not retrieve camera info:', error)
+    }
+    
+    this.emit('connect', this.deviceInfo)
   }
 
   async disconnect(): Promise<void> {
     await this.protocol.closeSession()
     this.connected = false
+    this.emit('disconnect')
   }
 
   isConnected(): boolean {
@@ -43,6 +67,8 @@ export class GenericPTPCamera implements CameraInterface {
     if (response.code !== PTPResponses.OK.code) {
       throw new Error(`Capture failed: 0x${response.code.toString(16)}`)
     }
+    
+    this.emit('capture')
   }
 
   async getDeviceProperty<T = any>(propertyName: keyof typeof PTPProperties): Promise<T> {

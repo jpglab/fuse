@@ -41,7 +41,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
             vendorId: device.vendorId,
             productId: device.productId,
             manufacturer: device.manufacturerName || undefined,
-            product: device.productName || undefined,
+            model: device.productName || undefined,
             serialNumber: device.serialNumber || undefined,
         }
     }
@@ -57,7 +57,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                 vendorId: device.vendorId,
                 productId: device.productId,
                 manufacturer: device.manufacturerName || undefined,
-                product: device.productName || undefined,
+                model: device.productName || undefined,
                 serialNumber: device.serialNumber || undefined,
             }))
         } else {
@@ -76,7 +76,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                     vendorId: descriptor.idVendor,
                     productId: descriptor.idProduct,
                     manufacturer: undefined, // Would need to read descriptor strings
-                    product: undefined, // Would need to read descriptor strings
+                    model: undefined, // Would need to read descriptor strings
                     serialNumber: undefined, // Would need to read descriptor strings
                 })
             }
@@ -104,7 +104,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                 vendorId: device.vendorId,
                 productId: device.productId,
                 manufacturer: device.manufacturerName || undefined,
-                product: device.productName || undefined,
+                model: device.productName || undefined,
                 serialNumber: device.serialNumber || undefined,
             }))
     }
@@ -162,7 +162,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
 
                 // Since device is already open and we confirmed it's PTP, read the string descriptors
                 let manufacturer: string | undefined = undefined
-                let product: string | undefined = undefined
+                let model: string | undefined = undefined
                 let serialNumber: string | undefined = undefined
 
                 // Use async method to read string descriptors
@@ -185,7 +185,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                             manufacturer = await readStringAsync(descriptor.iManufacturer)
                         }
                         if (descriptor.iProduct) {
-                            product = await readStringAsync(descriptor.iProduct)
+                            model = await readStringAsync(descriptor.iProduct)
                         }
                         if (descriptor.iSerialNumber) {
                             serialNumber = await readStringAsync(descriptor.iSerialNumber)
@@ -204,7 +204,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                     vendorId: descriptor.idVendor,
                     productId: descriptor.idProduct,
                     manufacturer,
-                    product,
+                    model,
                     serialNumber,
                 })
             } else {
@@ -214,7 +214,7 @@ export class USBDeviceFinder implements DeviceFinderInterface {
                     vendorId: descriptor.idVendor,
                     productId: descriptor.idProduct,
                     manufacturer: undefined,
-                    product: undefined,
+                    model: undefined,
                     serialNumber: undefined,
                 })
             }

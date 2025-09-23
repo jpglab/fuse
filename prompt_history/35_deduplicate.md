@@ -16,4 +16,6 @@ Goals:
 
 * Write a TypeScript script that lists every exported member recursively (type, interface, class, function, const, ANYTHING) in the entire `src` directory
 * After you have the script output, analyze the logs and try to identify the functionality of each export. Don't write a script for this, analyze it manually.
-* After you have identified the purpose of each, Identify areas where we have duplicated functionality in multiple places. Don't write a script for this, analyze it manually.
+* After you have identified the purpose of each, identify areas where we (write a script for this, analyze it manually):
+    - have duplicated functionality in multiple places
+    - have or unused functionality which we are not consuming anywhere else

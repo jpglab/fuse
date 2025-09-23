@@ -3,15 +3,99 @@
  * Constructs and parses PTP protocol messages
  */
 
-import {
-    MessageBuilderInterface,
-    ParsedResponse,
-    ParsedEvent,
-    ParsedData,
-    MessageType,
-} from '@core/interfaces/message-builder.interface'
+import { Response, Event, MessageType } from '@core/ptp-protocol'
 import { ContainerTypes, ContainerType } from '@constants/ptp'
+import { DataType } from '@constants/types'
 
+/**
+ * Message builder interface for constructing and parsing PTP messages
+ */
+export interface MessageBuilderInterface {
+    /**
+     * Build a command message
+     * @param operation - Operation code
+     * @param parameters - Operation parameters
+     * @returns Encoded message
+     */
+    buildCommand(operation: number, parameters?: number[]): Uint8Array
+
+    /**
+     * Build a data message
+     * @param operation - Operation code
+     * @param data - Data payload
+     * @returns Encoded message
+     */
+    buildData(operation: number, data: Uint8Array): Uint8Array
+
+    /**
+     * Parse a response message
+     * @param data - Raw response data
+     * @returns Parsed response
+     */
+    parseResponse(data: Uint8Array): Response
+
+    /**
+     * Parse an event message
+     * @param data - Raw event data
+     * @returns Parsed event
+     */
+    parseEvent(data: Uint8Array): Event
+
+    /**
+     * Parse data payload
+     * @param data - Raw data
+     * @returns Parsed data
+     */
+    parseData(data: Uint8Array): ParsedData
+
+    /**
+     * Get next transaction ID
+     */
+    getNextTransactionId(): number
+
+    /**
+     * Reset transaction ID (for new sessions)
+     */
+    resetTransactionId(): void
+}
+
+/**
+ * Parsed PTP data
+ */
+export interface ParsedData {
+    sessionId: number
+    transactionId: number
+    payload: Uint8Array
+}
+
+/**
+ * Data converter interface for type conversions
+ */
+export interface DataConverterInterface {
+    /**
+     * Convert value to PTP format
+     * @param value - Value to convert
+     * @param dataType - Target data type
+     */
+    toPTPFormat(value: unknown, dataType: DataType): Uint8Array
+
+    /**
+     * Convert from PTP format
+     * @param data - PTP formatted data
+     * @param dataType - Source data type
+     */
+    fromPTPFormat(data: Uint8Array, dataType: DataType): unknown
+}
+
+// For backwards compatibility during migration:
+export type ParsedResponse = Response
+export type ParsedEvent = Event
+// PTPDataType replaced by DataType from constants/types.ts
+export { DataType as PTPDataType } from '@constants/types'
+
+/**
+ * PTP Message Builder implementation
+ */
 export class PTPMessageBuilder implements MessageBuilderInterface {
     private transactionId = 0
 
@@ -76,7 +160,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
     /**
      * Parse a response message
      */
-    parseResponse(data: Uint8Array): ParsedResponse {
+    parseResponse(data: Uint8Array): Response {
         if (data.byteLength < 12) {
             throw new Error('Invalid response: too short')
         }
@@ -111,7 +195,7 @@ export class PTPMessageBuilder implements MessageBuilderInterface {
     /**
      * Parse an event message
      */
-    parseEvent(data: Uint8Array): ParsedEvent {
+    parseEvent(data: Uint8Array): Event {
         if (data.byteLength < 12) {
             throw new Error('Invalid event: too short')
         }

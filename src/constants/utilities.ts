@@ -90,6 +90,10 @@ export class ConstantMapper<T extends Record<string, { code: HexCode, [key: stri
 // Property mapper with special handling for encoding/decoding
 import type { Property } from './property-types'
 
+/**
+ * PropertyMapper - Specialized mapper for properties with encoding/decoding
+ * Note: Separate from ConstantMapper due to Property type structure differences
+ */
 export class PropertyMapper<T extends Record<string, Property>> {
   private codeToProperty: Map<HexCode, Property>
   private nameToProperty: Map<string, Property>

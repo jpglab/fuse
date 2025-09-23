@@ -1,4 +1,10 @@
-export interface CameraOptions {
+import { TransportOptions } from '../transport/interfaces/device.interface'
+
+/**
+ * Camera connection options
+ * Extends TransportOptions with camera-specific settings
+ */
+export interface CameraOptions extends TransportOptions {
     vendor?: string
     model?: string
     serialNumber?: string
@@ -12,24 +18,8 @@ export interface CameraOptions {
         port?: number
         protocol?: 'ptp/ip' | 'upnp'
     }
-
-    timeout?: number
 }
 
-export interface CameraDescriptor {
-    vendor: string
-    model: string
-    serialNumber?: string
-
-    usb?: {
-        vendorId: number
-        productId: number
-    }
-    ip?: {
-        host: string
-        port: number
-    }
-}
 
 // Photo and Frame are exported as classes from their respective files
 // These interfaces are removed to avoid duplication

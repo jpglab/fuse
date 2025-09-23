@@ -1,4 +1,4 @@
-import { ProtocolInterface } from '../../../core/interfaces/protocol.interface'
+import { ProtocolInterface } from '../../../core/ptp-protocol'
 import { GenericPTPCamera } from '../../generic/generic-ptp-camera'
 import { LiveViewFrame, FrameFormat } from '../../interfaces/liveview.interface'
 import { SonyAuthenticator } from './sony-authenticator'

@@ -1,4 +1,4 @@
-import { ProtocolInterface } from '../../../core/interfaces/protocol.interface'
+import { ProtocolInterface } from '../../../core/ptp-protocol'
 import { SonyOperations } from '@constants/vendors/sony/operations'
 import { SonyConstants } from '@constants/vendors/sony/properties'
 import { PTPResponses } from '@constants/ptp'

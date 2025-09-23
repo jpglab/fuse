@@ -3,25 +3,40 @@
  */
 
 /**
- * Device descriptor - comprehensive device information
- * Used for device discovery and identification
+ * Unified device descriptor - comprehensive device/camera information
+ * Used across all layers (transport, camera, client) for consistency
  */
 export interface DeviceDescriptor {
     // Core identifiers
-    vendorId: number
-    productId: number
+    vendorId?: number
+    productId?: number
     serialNumber?: string
     
     // Device metadata
     manufacturer?: string
-    product?: string
+    model?: string          // Replaces 'product' for consistency
+    vendor?: string         // Alias for manufacturer (client compatibility)
     
-    // Connection-specific details
-    path?: string           // USB device path
-    address?: string         // IP address or Bluetooth MAC
-    port?: number           // Network port
+    // Connection details (supports multiple transports)
+    usb?: {
+        vendorId: number
+        productId: number
+        path?: string       // USB device path
+    }
+    ip?: {
+        host: string        // IP address
+        port?: number       // Network port (defaults to standard PTP/IP port)
+        protocol?: 'ptp/ip' | 'upnp'
+    }
     
-    // Raw device object (platform-specific)
+    // Camera-specific information (populated after connection)
+    firmwareVersion?: string
+    batteryLevel?: number
+    
+    // Transport type hint
+    transportType?: TransportType
+    
+    // Raw device object (platform-specific, e.g., USBDevice)
     device?: unknown
 }
 
@@ -43,7 +58,6 @@ export interface DeviceSearchCriteria {
 export enum TransportType {
     USB = 'usb',
     IP = 'ip',
-    BLUETOOTH = 'bluetooth',
 }
 
 /**

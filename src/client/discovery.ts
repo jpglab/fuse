@@ -2,7 +2,8 @@
  * Unified discovery functions with runtime detection
  * Automatically handles Node.js (USB) and browser (WebUSB) environments
  */
-import { CameraOptions, CameraDescriptor } from './types'
+import { CameraOptions } from './types'
+import { DeviceDescriptor } from '../transport/interfaces/device.interface'
 
 // Runtime environment detection
 const isNode = typeof window === 'undefined'
@@ -16,7 +17,7 @@ const isWebUSBAvailable = typeof window !== 'undefined' && 'usb' in navigator
  * - In browser with WebUSB: Uses WebUSB API (if implemented)
  * - In browser without WebUSB: Throws informative error
  */
-export async function listCameras(options?: CameraOptions): Promise<CameraDescriptor[]> {
+export async function listCameras(options?: CameraOptions): Promise<DeviceDescriptor[]> {
     if (isNode) {
         // Node.js environment - use USB discovery
         return listCamerasNode(options)
@@ -35,7 +36,7 @@ export async function listCameras(options?: CameraOptions): Promise<CameraDescri
  * - In Node.js: Polls USB devices
  * - In browser: Not available (throws error)
  */
-export function watchCameras(callback: (cameras: CameraDescriptor[]) => void, options?: CameraOptions): () => void {
+export function watchCameras(callback: (cameras: DeviceDescriptor[]) => void, options?: CameraOptions): () => void {
     if (!isNode) {
         throw new Error('watchCameras() is not available in browser environment. Use WebUSB events for camera monitoring.')
     }
@@ -64,7 +65,7 @@ export function watchCameras(callback: (cameras: CameraDescriptor[]) => void, op
 }
 
 // Internal function for Node.js discovery (not exported)
-async function listCamerasNode(options?: CameraOptions): Promise<CameraDescriptor[]> {
+async function listCamerasNode(options?: CameraOptions): Promise<DeviceDescriptor[]> {
     const { USBDeviceFinder } = await import('@transport/usb/usb-device-finder')
     const { CameraFactory } = await import('@camera/camera-factory')
     
@@ -78,25 +79,29 @@ async function listCamerasNode(options?: CameraOptions): Promise<CameraDescripto
 
     const devices = await deviceFinder.findDevices(searchCriteria)
 
-    let cameras: CameraDescriptor[] = devices.map(device => {
-        const vendor = cameraFactory.detectVendor(device.vendorId)
+    let cameras: DeviceDescriptor[] = devices.map(device => {
+        const vendorId = device.vendorId || 0
+        const productId = device.productId || 0
+        const vendor = cameraFactory.detectVendor(vendorId)
         return {
             vendor: vendor.charAt(0).toUpperCase() + vendor.slice(1),
-            model: 'Camera',
+            model: device.model || 'Camera',
             serialNumber: device.serialNumber,
-            usb: {
-                vendorId: device.vendorId,
-                productId: device.productId,
-            },
-        }
+            vendorId,
+            productId,
+            usb: vendorId && productId ? {
+                vendorId,
+                productId,
+            } : undefined,
+        } as DeviceDescriptor
     })
 
     if (options?.vendor) {
-        cameras = cameras.filter(camera => camera.vendor.toLowerCase() === options.vendor!.toLowerCase())
+        cameras = cameras.filter(camera => camera.vendor?.toLowerCase() === options.vendor!.toLowerCase())
     }
 
     if (options?.model) {
-        cameras = cameras.filter(camera => camera.model.toLowerCase().includes(options.model!.toLowerCase()))
+        cameras = cameras.filter(camera => camera.model?.toLowerCase().includes(options.model!.toLowerCase()))
     }
 
     if (options?.serialNumber) {
@@ -107,7 +112,7 @@ async function listCamerasNode(options?: CameraOptions): Promise<CameraDescripto
         // Future: IP camera discovery will be added here
         // For now, we can manually add IP cameras if specified
         if (options.ip.host) {
-            const ipCamera: CameraDescriptor = {
+            const ipCamera: DeviceDescriptor = {
                 vendor: options.vendor || 'Unknown',
                 model: options.model || 'IP Camera',
                 serialNumber: options.serialNumber,
