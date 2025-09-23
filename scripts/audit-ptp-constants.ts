@@ -281,67 +281,108 @@ async function extractISODocBlock(constant: ExtractedConstant): Promise<Document
   
   for (const hex of hexVariations) {
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(hex)) {
-        // Find the section boundaries
-        let startLine = i
-        let endLine = i
-        
-        // Search backward for section header
-        for (let j = i - 1; j >= Math.max(0, i - 50); j--) {
-          if (lines[j].match(/^#{1,3}\s+/) || lines[j].match(/^\*\*[\d.]+\s+/)) {
-            startLine = j
-            break
-          }
+      // Check if this line contains our exact hex code (not as substring)
+      const hexRegex = new RegExp(`\\b${hex.replace('0x', '0x')}\\b`, 'i')
+      if (!hexRegex.test(lines[i])) continue
+      
+      // Check the context around the hex code to ensure it's the right type
+      const contextStart = Math.max(0, i - 3)
+      const contextEnd = Math.min(lines.length, i + 3)
+      const context = lines.slice(contextStart, contextEnd).join('\n')
+      
+      // Verify this is the right type of constant
+      let isCorrectType = false
+      if (constant.category === 'property' && context.includes('DevicePropCode')) isCorrectType = true
+      else if (constant.category === 'operation' && context.includes('OperationCode')) isCorrectType = true
+      else if (constant.category === 'event' && context.includes('EventCode')) isCorrectType = true
+      else if (constant.category === 'response' && context.includes('ResponseCode')) isCorrectType = true
+      else if (constant.category === 'format' && context.includes('ObjectFormatCode')) isCorrectType = true
+      
+      if (!isCorrectType) continue
+      
+      // Find the section boundaries
+      let startLine = i
+      let endLine = i
+      
+      // Search backward for section header - be more precise
+      for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+        // Look for section headers with numbers
+        if (lines[j].match(/^#{1,4}\s+\*?\*?[\d.]+\s+/) || 
+            lines[j].match(/^\*\*[\d.]+\s+/) ||
+            (lines[j].match(/^#{1,4}\s+/) && j === i - 1)) { // If header is immediately before
+          startLine = j
+          break
         }
-        
-        // Search forward for next section or significant break
-        for (let j = i + 1; j < Math.min(lines.length, i + 100); j++) {
-          if (lines[j].match(/^#{1,3}\s+/) || 
-              lines[j].match(/^\*\*[\d.]+\s+/) ||
-              lines[j].includes('**Table')) {
+      }
+      
+      // Search forward for next section - stop at next heading with a hex code
+      for (let j = i + 1; j < Math.min(lines.length, i + 100); j++) {
+        // Check if next section starts (has a heading and different hex code)
+        if (lines[j].match(/^#{1,4}\s+\*?\*?[\d.]+\s+/) || 
+            lines[j].match(/^\*\*[\d.]+\s+/)) {
+          // Check if the next few lines contain a different hex code
+          let hasOtherHex = false
+          for (let k = j; k < Math.min(j + 5, lines.length); k++) {
+            if (lines[k].match(/0x[0-9A-Fa-f]{4}/) && !lines[k].includes(hex)) {
+              hasOtherHex = true
+              break
+            }
+          }
+          if (hasOtherHex) {
             endLine = j
             break
           }
         }
-        
-        // Extract heading if present
-        const headingMatch = lines[startLine].match(/^#{1,3}\s+(?:[\d.]+\s+)?(.+)/) ||
-                            lines[startLine].match(/^\*\*[\d.]+\s+(.+)\*\*/)
-        const heading = headingMatch ? headingMatch[1].trim() : ''
-        
-        // Calculate fuzzy match score
-        const fuzzyScore = fuzzyMatch(constant.constantName, heading)
-        
-        // Validate the block contains expected fields
-        const blockContent = lines.slice(startLine, endLine).join('\n')
-        let validationScore = 0
-        
-        if (constant.category === 'property' && blockContent.includes('DevicePropCode')) validationScore += 0.3
-        if (constant.category === 'operation' && blockContent.includes('OperationCode')) validationScore += 0.3
-        if (constant.category === 'event' && blockContent.includes('EventCode')) validationScore += 0.3
-        if (constant.category === 'response' && blockContent.includes('ResponseCode')) validationScore += 0.3
-        if (blockContent.includes('Description')) validationScore += 0.2
-        if (blockContent.includes('Data type')) validationScore += 0.1
-        
-        const totalScore = fuzzyScore * 0.6 + validationScore * 0.4
-        
-        if (totalScore > 0.3) { // Minimum threshold
-          potentialBlocks.push({
-            hexCode: constant.hexCode,
-            constantName: constant.constantName,
-            content: blockContent,
-            startLine,
-            endLine
-          })
-        }
+      }
+      
+      // Extract heading if present
+      const headingMatch = lines[startLine].match(/^#{1,4}\s+\*?\*?(?:[\d.]+\s+)?(.+?)\*?\*?$/) ||
+                          lines[startLine].match(/^\*\*[\d.]+\s+(.+)\*\*/)
+      const heading = headingMatch ? headingMatch[1].trim() : ''
+      
+      // Calculate fuzzy match score
+      const fuzzyScore = fuzzyMatch(constant.constantName, heading)
+      
+      // Extract and validate the block
+      const blockContent = lines.slice(startLine, endLine).join('\n')
+      
+      // Additional validation - ensure we have the right hex code prominently
+      const hexCount = (blockContent.match(new RegExp(hex, 'gi')) || []).length
+      if (hexCount === 0) continue
+      
+      let validationScore = 0.5 // Base score since we already verified type
+      if (blockContent.includes('Description')) validationScore += 0.2
+      if (blockContent.includes('Parameter')) validationScore += 0.1
+      if (blockContent.includes('Response')) validationScore += 0.1
+      if (blockContent.includes('Data type')) validationScore += 0.1
+      
+      const totalScore = fuzzyScore * 0.5 + validationScore * 0.5
+      
+      if (totalScore > 0.4) { // Slightly higher threshold
+        potentialBlocks.push({
+          hexCode: constant.hexCode,
+          constantName: constant.constantName,
+          content: blockContent,
+          startLine,
+          endLine
+        })
       }
     }
   }
   
   // Return the best match
   if (potentialBlocks.length > 0) {
-    // Sort by content length (prefer more complete blocks)
-    potentialBlocks.sort((a, b) => b.content.length - a.content.length)
+    // Sort by validation score and content relevance
+    potentialBlocks.sort((a, b) => {
+      // Prefer blocks that start with the exact heading
+      const aHasExactHeading = a.content.split('\n')[0].toLowerCase().includes(constant.constantName.toLowerCase().replace(/_/g, ''))
+      const bHasExactHeading = b.content.split('\n')[0].toLowerCase().includes(constant.constantName.toLowerCase().replace(/_/g, ''))
+      if (aHasExactHeading && !bHasExactHeading) return -1
+      if (!aHasExactHeading && bHasExactHeading) return 1
+      
+      // Otherwise prefer shorter, more focused blocks
+      return a.content.length - b.content.length
+    })
     return potentialBlocks[0]
   }
   
