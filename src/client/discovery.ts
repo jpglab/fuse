@@ -23,7 +23,6 @@ export function watchCameras(callback: (cameras: CameraDescriptor[]) => void, op
         throw new Error('watchCameras() is not available in browser environment. Use WebUSB API for camera discovery.')
     }
 
-    // In Node.js, implement the full functionality
     const intervalMilliseconds = 1000
     let lastCameraCount = -1
 

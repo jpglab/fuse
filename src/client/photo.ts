@@ -1,6 +1,6 @@
-import { Photo as PhotoType } from './types'
+import type { Photo as IPhoto } from './types'
 
-export class Photo implements PhotoType {
+export class Photo implements IPhoto {
     public data: Buffer
     public filename: string
     public size: number

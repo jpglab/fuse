@@ -61,27 +61,3 @@ export async function listCameras(options?: CameraOptions): Promise<CameraDescri
 
     return cameras
 }
-
-export function watchCameras(callback: (cameras: CameraDescriptor[]) => void, options?: CameraOptions): () => void {
-    const intervalMilliseconds = 1000
-    let lastCameraCount = -1
-
-    const checkCameras = async () => {
-        try {
-            const cameras = await listCameras(options)
-            if (cameras.length !== lastCameraCount) {
-                lastCameraCount = cameras.length
-                callback(cameras)
-            }
-        } catch (error) {
-            console.error('Error watching cameras:', error)
-        }
-    }
-
-    // Initial check
-    checkCameras()
-
-    const interval = setInterval(checkCameras, intervalMilliseconds)
-
-    return () => clearInterval(interval)
-}

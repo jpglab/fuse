@@ -1,0 +1,19 @@
+We are building an API around Picture Transfer Protocol (PTP).
+
+We have amassed a vast collection on this protocol (both the generic ISO spec and various vendor implementations). You have access to all of this in the `docs/` folder.
+
+Essential background context:
+
+- You **MUST FULLY** read, understand, and adhere to this prompt before continuing.
+- You **MUST FULLY** read, understand, and adhere to the important notes before continuing.
+- You **MUST FULLY** read, understand, and adhere to the goals before continuing.
+- You **MUST FULLY** read, understand, and adhere to the success criteria before continuing.
+- You **MUST FULLY** read, understand, and adhere to `./AGENTS.md` before continuing.
+- You _may_ read through `prompt_history/` to understand our work so far at any time.
+- You _may_ read through anything in the `docs/` folder to understand the ISO or vendor implementations of the spec.
+
+Goals:
+
+* Write a TypeScript script that lists every exported member recursively (type, interface, class, function, const, ANYTHING) in the entire `src` directory
+* After you have the script output, analyze the logs and try to identify the functionality of each export. Don't write a script for this, analyze it manually.
+* After you have identified the purpose of each, Identify areas where we have duplicated functionality in multiple places. Don't write a script for this, analyze it manually.

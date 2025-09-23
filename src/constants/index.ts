@@ -14,26 +14,8 @@ export * from './property-enums'
 // Export utilities
 export * from './utilities'
 
-// Export PTP constants
+// Export PTP constants (includes mappers)
 export * from './ptp'
 
-// Export vendor extensions
+// Export vendor extensions (includes mappers)
 export * as Sony from './vendors/sony'
-
-// Re-export commonly used mappers at top level for convenience
-export {
-  PTPOperationMapper,
-  PTPResponseMapper,
-  PTPEventMapper,
-  PTPPropertyMapper,
-  PTPFormatMapper,
-  PTPStorageMapper
-} from './ptp'
-
-export {
-  SonyPropertyMapper,
-  SonyOperationMapper,
-  SonyEventMapper,
-  SonyResponseMapper,
-  SonyControlMapper
-} from './vendors/sony'
