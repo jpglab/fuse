@@ -7,6 +7,5 @@
 // Re-export all common exports
 export * from './exports'
 
-// Node.js-specific discovery functions (direct from discovery-node)
-export { listCameras } from './client/discovery-node'
-export { watchCameras } from './client/discovery'
+// Discovery functions with Node.js support
+export { listCameras, watchCameras } from './client/discovery'

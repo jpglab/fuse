@@ -9,18 +9,15 @@ export { Frame } from './client/frame'
 export type {
     CameraOptions,
     CameraDescriptor,
-    ExposureMode,
 } from './client/types'
-
-// Export the interface types separately to avoid naming conflicts
-export type { Photo as IPhoto, Frame as IFrame } from './client/types'
 
 // Property constants for advanced usage
 export { DeviceProperty } from '@camera/properties/device-properties'
 
 // Export interfaces for advanced users
 export type { CameraInterface } from '@camera/interfaces/camera.interface'
-export type { TransportInterface, DeviceIdentifier, TransportType } from '@transport/interfaces/transport.interface'
+export type { TransportInterface } from '@transport/interfaces/transport.interface'
+export type { DeviceDescriptor, TransportType, TransportOptions } from '@transport/interfaces/device.interface'
 export type { ProtocolInterface, Operation, Response, Event } from '@core/interfaces/protocol.interface'
 // Export camera layer types
 export type { CameraInfo, StorageInfo } from '@camera/interfaces/camera.interface'
@@ -52,7 +49,6 @@ export type {
     EndpointManagerInterface,
     EndpointConfiguration,
     DeviceFinderInterface,
-    DeviceSearchCriteria,
-    DeviceDescriptor,
 } from '@transport/interfaces/endpoint.interface'
+export type { DeviceSearchCriteria } from '@transport/interfaces/device.interface'
 export { EndpointType } from '@transport/interfaces/endpoint.interface'

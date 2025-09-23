@@ -1,12 +1,14 @@
 import { TransportFactory } from '@transport/transport-factory'
 import { CameraFactory } from '@camera/camera-factory'
 import { CameraInterface } from '@camera/interfaces/camera.interface'
-import { TransportType } from '@transport/interfaces/transport.interface'
+import { TransportType } from '@transport/interfaces/device.interface'
 import { DeviceProperty } from '@camera/properties/device-properties'
 import { listCameras } from './discovery'
-import { CameraOptions, CameraDescriptor, Photo as PhotoType, Frame, ExposureMode } from './types'
+import { CameraOptions, CameraDescriptor } from './types'
 import { Photo } from './photo'
+import { Frame } from './frame'
 import { EventEmitter } from './event-emitter'
+import { PTPPropertyMapper } from '@constants/ptp'
 
 export class Camera extends EventEmitter {
     private options: CameraOptions
@@ -147,7 +149,7 @@ export class Camera extends EventEmitter {
         return this._serialNumber
     }
 
-    async takePhoto(): Promise<PhotoType> {
+    async takePhoto(): Promise<Photo> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         try {
             console.log('[Camera] Capturing image...')
@@ -212,13 +214,13 @@ export class Camera extends EventEmitter {
         await this.cameraImplementation.setDeviceProperty(DeviceProperty.APERTURE, numericValue)
     }
 
-    async getExposureMode(): Promise<ExposureMode> {
+    async getExposureMode(): Promise<string> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         const value = await this.cameraImplementation.getDeviceProperty(DeviceProperty.EXPOSURE_MODE)
         return this.mapExposureMode(value)
     }
 
-    async setExposureMode(value: ExposureMode): Promise<void> {
+    async setExposureMode(value: string): Promise<void> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         const numericValue = this.mapExposureModeToNumeric(value)
         await this.cameraImplementation.setDeviceProperty(DeviceProperty.EXPOSURE_MODE, numericValue)
@@ -271,19 +273,19 @@ export class Camera extends EventEmitter {
         // Live view stop implementation would go here
     }
 
-    async listPhotos(): Promise<PhotoType[]> {
+    async listPhotos(): Promise<Photo[]> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         // Simplified API doesn't support listing photos
         return []
     }
 
-    async downloadPhoto(_photo: PhotoType): Promise<Buffer> {
+    async downloadPhoto(_photo: Photo): Promise<Buffer> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         // Simplified API doesn't support downloading photos
         throw new Error('Photo download not supported in simplified API')
     }
 
-    async deletePhoto(_photo: PhotoType): Promise<void> {
+    async deletePhoto(_photo: Photo): Promise<void> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         // Simplified API doesn't support deleting photos
         throw new Error('Photo deletion not supported in simplified API')
@@ -321,25 +323,16 @@ export class Camera extends EventEmitter {
         return parseFloat(value)
     }
 
-    private mapExposureMode(value: any): ExposureMode {
-        if (typeof value === 'string') return value as ExposureMode
-        // Map numeric values to exposure modes (camera-specific)
-        const modeMap: { [key: number]: ExposureMode } = {
-            0: 'auto',
-            1: 'manual',
-            2: 'aperture',
-            3: 'shutter',
-        }
-        return modeMap[value as number] || 'auto'
+    private mapExposureMode(value: any): string {
+        if (typeof value === 'string') return value
+        // Use PTPPropertyMapper to decode exposure mode
+        const decoded = PTPPropertyMapper.decode(0x500E, value)
+        return decoded || 'auto'
     }
 
-    private mapExposureModeToNumeric(mode: ExposureMode): number {
-        const modeMap: { [key in ExposureMode]: number } = {
-            auto: 0,
-            manual: 1,
-            aperture: 2,
-            shutter: 3,
-        }
-        return modeMap[mode]
+    private mapExposureModeToNumeric(mode: string): number {
+        // Use PTPPropertyMapper to encode exposure mode
+        const encoded = PTPPropertyMapper.encode(0x500E, mode.toUpperCase().replace(/([A-Z])/g, '_$1').slice(1))
+        return encoded as number ?? 0x0002 // Default to AUTO
     }
 }

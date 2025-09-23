@@ -31,19 +31,7 @@ export interface CameraDescriptor {
     }
 }
 
-export interface Photo {
-    data: Buffer
-    filename: string
-    size: number
-    capturedAt: Date
-    save(path: string): Promise<void>
-}
+// Photo and Frame are exported as classes from their respective files
+// These interfaces are removed to avoid duplication
 
-export interface Frame {
-    data: Buffer
-    width: number
-    height: number
-    timestamp: number
-}
-
-export type ExposureMode = 'auto' | 'manual' | 'aperture' | 'shutter'
+// ExposureMode is exported from constants/property-enums.ts to avoid duplication

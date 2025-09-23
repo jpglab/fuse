@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { Camera, listCameras, watchCameras, DeviceProperty } from '..'
+import { Camera, listCameras, watchCameras, DeviceProperty, ExposureMode } from '../src'
 
 describe('Client API', () => {
     describe('Discovery', () => {
@@ -235,11 +235,11 @@ describe('Client API', () => {
 
             try {
                 const originalMode = await camera.getExposureMode()
-                expect(['auto', 'manual', 'aperture', 'shutter']).toContain(originalMode)
+                expect([ExposureMode.AUTO, ExposureMode.MANUAL, ExposureMode.APERTURE_PRIORITY, ExposureMode.SHUTTER_PRIORITY]).toContain(originalMode)
 
-                await camera.setExposureMode('manual')
+                await camera.setExposureMode(ExposureMode.MANUAL)
                 const newMode = await camera.getExposureMode()
-                expect(newMode).toBe('manual')
+                expect(newMode).toBe(ExposureMode.MANUAL)
 
                 // Restore original
                 await camera.setExposureMode(originalMode)
@@ -310,7 +310,7 @@ describe('Client API', () => {
 
     describe('Photo Class', () => {
         it('should save photo to disk', async () => {
-            const { Photo } = await import('..')
+            const { Photo } = await import('../src')
             const testData = Buffer.from('test photo data')
             const photo = new Photo(testData, 'test.jpg')
 
@@ -340,7 +340,7 @@ describe('Client API', () => {
 
     describe('Frame Class', () => {
         it('should create frame with properties', async () => {
-            const { Frame } = await import('..')
+            const { Frame } = await import('../src')
             const testData = Buffer.from('frame data')
             const frame = new Frame(testData, 1920, 1080)
 

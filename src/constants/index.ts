@@ -8,9 +8,6 @@ export * from './types'
 export * from './validation-types'
 export * from './property-types'
 
-// Export property enums
-export * from './property-enums'
-
 // Export utilities
 export * from './utilities'
 

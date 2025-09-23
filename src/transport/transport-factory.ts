@@ -1,4 +1,5 @@
-import { TransportInterface, TransportType, TransportOptions } from './interfaces/transport.interface'
+import { TransportInterface } from './interfaces/transport.interface'
+import { TransportType, TransportOptions } from './interfaces/device.interface'
 import { DeviceFinderInterface, EndpointManagerInterface } from './interfaces/endpoint.interface'
 
 /**

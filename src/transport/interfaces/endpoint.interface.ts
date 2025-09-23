@@ -1,6 +1,7 @@
 /**
  * Endpoint management interface for transport implementations
  */
+import { DeviceDescriptor, DeviceSearchCriteria } from './device.interface'
 export interface EndpointManagerInterface {
     /**
      * Configure endpoints for a device
@@ -65,25 +66,4 @@ export interface DeviceFinderInterface {
     getAllDevices(): Promise<DeviceDescriptor[]>
 }
 
-/**
- * Device search criteria
- */
-export interface DeviceSearchCriteria {
-    vendorId?: number
-    productId?: number
-    class?: number
-    subclass?: number
-    protocol?: number
-}
-
-/**
- * Device descriptor
- */
-export interface DeviceDescriptor {
-    device: unknown
-    vendorId: number
-    productId: number
-    manufacturer?: string
-    product?: string
-    serialNumber?: string
-}
+// Device interfaces moved to device.interface.ts

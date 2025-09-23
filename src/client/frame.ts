@@ -1,6 +1,4 @@
-import type { Frame as IFrame } from './types'
-
-export class Frame implements IFrame {
+export class Frame {
     public data: Buffer
     public width: number
     public height: number

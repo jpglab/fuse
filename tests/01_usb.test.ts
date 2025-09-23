@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { TransportFactory } from '@transport/transport-factory'
-import { TransportType } from '@transport/interfaces/transport.interface'
+import { TransportType } from '@transport/interfaces/device.interface'
 import { USBDeviceFinder } from '@transport/usb/usb-device-finder'
 
 // Sony vendor ID

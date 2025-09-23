@@ -1,5 +1,6 @@
-import { TransportInterface, TransportType, DeviceIdentifier } from '@transport/interfaces/transport.interface'
+import { TransportInterface, TransportType } from '@transport/interfaces/transport.interface'
 import { EndpointManagerInterface, EndpointType, DeviceFinderInterface } from '@transport/interfaces/endpoint.interface'
+import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 
 /**
  * USB transport implementation for PTP communication
@@ -20,7 +21,7 @@ export class USBTransport implements TransportInterface {
     /**
      * Connect to a USB device
      */
-    async connect(deviceIdentifier: DeviceIdentifier): Promise<void> {
+    async connect(deviceIdentifier: DeviceDescriptor): Promise<void> {
         if (this.connected) {
             throw new Error('Already connected')
         }
@@ -248,7 +249,7 @@ export class USBTransport implements TransportInterface {
     /**
      * Get connected device information
      */
-    getDeviceInfo(): DeviceIdentifier | null {
+    getDeviceInfo(): DeviceDescriptor | null {
         return this.deviceInfo
     }
 
