@@ -3,9 +3,9 @@
  * Constructs and parses PTP protocol messages
  */
 
-import { Response, Event } from '@constants/types'
 import { ContainerTypes, containerTypeToMessageType, PTP_CONTAINER, PTP_LIMITS, EVENT_LIMITS } from '@constants/ptp/containers'
 import { createDataView, parsePTPParameters } from '@core/buffers'
+import { Response, Event } from '@constants/types'
 
 /**
  * Message builder interface for constructing and parsing PTP messages

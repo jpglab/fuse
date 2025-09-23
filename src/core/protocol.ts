@@ -156,7 +156,11 @@ export class PTPProtocol implements ProtocolInterface {
                 : this.expectsDataIn(operation.code) || operation.data !== undefined
 
         // Send command phase
-        const command = this.messageBuilder.buildCommand(operation.code, operation.parameters || [])
+        // Convert parameters to runtime format if needed
+        const runtimeParams = Array.isArray(operation.parameters) && operation.parameters.length > 0 && typeof operation.parameters[0] === 'number'
+            ? operation.parameters as number[]
+            : []
+        const command = this.messageBuilder.buildCommand(operation.code, runtimeParams)
         await this.transport.send(command)
 
         // Handle data phase if present

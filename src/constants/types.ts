@@ -16,204 +16,220 @@ export type HexCode = number
  * Data types supported by PTP
  */
 export const DataType = {
-  UINT8: 0x0001,
-  INT8: 0x0002,
-  UINT16: 0x0003,
-  INT16: 0x0004,
-  UINT32: 0x0005,
-  INT32: 0x0006,
-  UINT64: 0x0007,
-  INT64: 0x0008,
-  UINT128: 0x0009,
-  INT128: 0x000A,
-  ARRAY_UINT8: 0x4001,
-  ARRAY_INT8: 0x4002,
-  ARRAY_UINT16: 0x4003,
-  ARRAY_INT16: 0x4004,
-  ARRAY_UINT32: 0x4005,
-  ARRAY_INT32: 0x4006,
-  ARRAY_UINT64: 0x4007,
-  ARRAY_INT64: 0x4008,
-  STRING: 0xFFFF,
+    UINT8: 0x0001,
+    INT8: 0x0002,
+    UINT16: 0x0003,
+    INT16: 0x0004,
+    UINT32: 0x0005,
+    INT32: 0x0006,
+    UINT64: 0x0007,
+    INT64: 0x0008,
+    UINT128: 0x0009,
+    INT128: 0x000a,
+    ARRAY_UINT8: 0x4001,
+    ARRAY_INT8: 0x4002,
+    ARRAY_UINT16: 0x4003,
+    ARRAY_INT16: 0x4004,
+    ARRAY_UINT32: 0x4005,
+    ARRAY_INT32: 0x4006,
+    ARRAY_UINT64: 0x4007,
+    ARRAY_INT64: 0x4008,
+    STRING: 0xffff,
 } as const
 
-export type DataTypeValue = typeof DataType[keyof typeof DataType]
+export type DataTypeValue = (typeof DataType)[keyof typeof DataType]
 
 /**
  * Property form types
  */
 export const PropertyForm = {
-  NONE: 0x00,
-  RANGE: 0x01,
-  ENUM: 0x02,
+    NONE: 0x00,
+    RANGE: 0x01,
+    ENUM: 0x02,
 } as const
 
-export type PropertyFormValue = typeof PropertyForm[keyof typeof PropertyForm]
+export type PropertyFormValue = (typeof PropertyForm)[keyof typeof PropertyForm]
 
 /**
  * Property access types
  */
 export const PropertyAccess = {
-  READ_ONLY: 0x00,
-  READ_WRITE: 0x01,
+    READ_ONLY: 0x00,
+    READ_WRITE: 0x01,
 } as const
 
-export type PropertyAccessValue = typeof PropertyAccess[keyof typeof PropertyAccess]
+export type PropertyAccessValue = (typeof PropertyAccess)[keyof typeof PropertyAccess]
 
 /**
  * Message type enumeration
  */
 export enum MessageType {
-  COMMAND = 1,
-  DATA = 2,
-  RESPONSE = 3,
-  EVENT = 4,
+    COMMAND = 1,
+    DATA = 2,
+    RESPONSE = 3,
+    EVENT = 4,
 }
 
 // ============================================================================
-// Runtime Types (for actual data instances)
+// Core Types (used in both constants and runtime)
 // ============================================================================
 
 /**
- * PTP Operation - runtime instance
+ * Operation - used in constants and runtime
  */
 export interface Operation {
-  code: number
-  parameters?: number[]
-  data?: Uint8Array
-  hasDataPhase?: boolean
-  maxDataLength?: number
+    code: HexCode
+    // Constant fields
+    description?: string
+    parameters?:
+        | Array<{
+              name: string
+              type: DataTypeValue
+              description: string
+          }>
+        | number[] // Can be parameter definitions OR runtime values
+    dataIn?: boolean
+    dataOut?: boolean
+    dataDescription?: string
+    // Runtime fields
+    data?: Uint8Array
+    hasDataPhase?: boolean
+    maxDataLength?: number
 }
 
 /**
- * PTP Response - runtime instance
+ * Response - used in constants and runtime
  */
 export interface Response {
-  code: number
-  sessionId: number
-  transactionId: number
-  parameters?: number[]
-  data?: Uint8Array
-  raw?: Uint8Array
-  type?: MessageType
+    code: HexCode
+    // Constant fields
+    name?: string
+    description?: string
+    // Runtime fields
+    sessionId?: number
+    transactionId?: number
+    parameters?: number[]
+    data?: Uint8Array
+    raw?: Uint8Array
+    type?: MessageType
 }
 
 /**
- * PTP Event - runtime instance
+ * Event - used in constants and runtime
  */
 export interface Event {
-  code: number
-  sessionId: number
-  transactionId: number
-  parameters?: number[]
+    code: HexCode
+    // Constant fields
+    description?: string
+    parameters?:
+        | Array<{
+              name: string
+              type: DataTypeValue
+              description: string
+          }>
+        | number[] // Can be parameter definitions OR runtime values
+    // Runtime fields
+    sessionId?: number
+    transactionId?: number
+}
+
+/**
+ * Property definition
+ */
+export interface Property {
+    name: string
+    code: HexCode
+    type: DataTypeValue
+    unit?: string
+    description: string
+    writable?: boolean
+    descriptor?: PropertyDescriptor<any>
+    enum?: Record<string, HexCode>
+    encode?: (value: any) => HexCode | Uint8Array
+    decode?: (value: HexCode | Uint8Array) => any
 }
 
 /**
  * Property descriptor for allowed values
  */
 export interface PropertyDescriptor<T> {
-  current?: T
-  default?: T
-  form: PropertyFormValue
-  min?: T
-  max?: T
-  step?: T
-  allowedValues?: T[]
-}
-
-// ============================================================================
-// Definition Types (for constant definitions)
-// ============================================================================
-
-/**
- * Operation definition for PTP operation constants
- */
-export type OperationDefinition = Record<string, {
-  code: HexCode
-  description: string
-  parameters?: Array<{
-    name: string
-    type: DataTypeValue
-    description: string
-  }>
-  dataIn?: boolean
-  dataOut?: boolean
-  dataDescription?: string
-}>
-
-/**
- * Response definition for PTP response constants
- */
-export type ResponseDefinition = Record<string, {
-  name: string
-  code: HexCode
-  description: string
-  recoverable?: boolean
-}>
-
-/**
- * Event definition for PTP event constants
- */
-export type EventDefinition = Record<string, {
-  code: HexCode
-  description: string
-  parameters?: Array<{
-    name: string
-    type: DataTypeValue
-    description: string
-  }>
-}>
-
-/**
- * Property definition type
- */
-export interface Property {
-  name: string
-  code: HexCode
-  type: DataTypeValue
-  unit?: string
-  description: string
-  writable?: boolean
-  descriptor?: PropertyDescriptor<any>
-  enum?: Record<string, HexCode>
-  encode?: (value: any) => HexCode | Uint8Array
-  decode?: (value: HexCode | Uint8Array) => any
+    current?: T
+    default?: T
+    form: PropertyFormValue
+    min?: T
+    max?: T
+    step?: T
+    allowedValues?: T[]
 }
 
 /**
- * Property definition for PTP property constants
+ * Storage definition
  */
-export type PropertyDefinition = Record<string, Property>
-
-/**
- * Storage type definition
- */
-export type StorageDefinition = Record<string, {
-  name: string
-  code: HexCode
-  description: string
-}>
+export interface Storage {
+    name: string
+    code: HexCode
+    description: string
+}
 
 /**
  * Format definition
  */
-export type FormatDefinition = Record<string, {
-  name: string
-  code: HexCode
-  description: string
-  fileExtension?: string
-  mimeType?: string
-}>
+export interface Format {
+    name: string
+    code: HexCode
+    description: string
+    fileExtension?: string
+    mimeType?: string
+}
 
 /**
- * Control definition (for Sony controls)
+ * Control definition
  */
-export type ControlDefinition = Record<string, {
-  property: HexCode
-  value: HexCode
-  description: string
-  holdable?: boolean
-}>
+export interface Control {
+    property: HexCode
+    value: HexCode
+    description: string
+    holdable?: boolean
+}
+
+// ============================================================================
+// Collection Types (for constant objects)
+// ============================================================================
+
+/**
+ * Operation constants collection
+ */
+export type OperationDefinition = Record<string, Operation>
+
+/**
+ * Response constants collection
+ */
+export type ResponseDefinition = Record<string, Response>
+
+/**
+ * Event constants collection
+ */
+export type EventDefinition = Record<string, Event>
+
+/**
+ * Property constants collection
+ */
+export type PropertyDefinition = Record<string, Property>
+
+/**
+ * Storage constants collection
+ */
+export type StorageDefinition = Record<string, Storage>
+
+/**
+ * Format constants collection
+ */
+export type FormatDefinition = Record<string, Format>
+
+/**
+ * Control constants collection
+ */
+export type ControlDefinition = Record<string, Control>
 
 // ============================================================================
 // Backwards Compatibility Aliases (will be removed in future)
