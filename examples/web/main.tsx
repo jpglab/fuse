@@ -196,9 +196,13 @@ export default function App() {
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
     const [audioContext, setAudioContext] = useState<AudioContext | null>(null)
     const [audioSource, setAudioSource] = useState<AudioBufferSourceNode | null>(null)
+    const [realtimeAudioData, setRealtimeAudioData] = useState<Float32Array[]>([]) // Store audio chunks during recording
     const playbackAnimationFrameRef = useRef<number | null>(null)
     const playbackFrameIndexRef = useRef(0)
     const lastPlaybackTime = useRef(0)
+    const isRecordingRef = useRef(false)
+    const realtimeAudioCaptureRef = useRef<number | null>(null)
+    const audioProcessorRef = useRef<ScriptProcessorNode | null>(null)
     const maxFrames = 300 // Limit to ~10 seconds at 30fps
 
     // Initialize audio context and get audio devices
@@ -249,6 +253,12 @@ export default function App() {
             // Cancel any running animation frames
             if (playbackAnimationFrameRef.current) {
                 cancelAnimationFrame(playbackAnimationFrameRef.current)
+            }
+            if (realtimeAudioCaptureRef.current) {
+                cancelAnimationFrame(realtimeAudioCaptureRef.current)
+            }
+            if (audioProcessorRef.current) {
+                audioProcessorRef.current.disconnect()
             }
         }
     }, [])
@@ -472,20 +482,72 @@ export default function App() {
         if (isRecording) {
             // Stop recording
             setIsRecording(false)
+            isRecordingRef.current = false
+
+            // Cancel real-time audio capture
+            if (realtimeAudioCaptureRef.current) {
+                cancelAnimationFrame(realtimeAudioCaptureRef.current)
+                realtimeAudioCaptureRef.current = null
+            }
+
+            // Disconnect audio processor
+            if (audioProcessorRef.current) {
+                audioProcessorRef.current.disconnect()
+                audioProcessorRef.current = null
+            }
+
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop()
             }
-            console.log(`Recording stopped. Captured ${capturedFrames.length} frames and ${capturedAudio.length} audio samples.`)
+            // Clear real-time audio data
+            setRealtimeAudioData([])
+            console.log(
+                `Recording stopped. Captured ${capturedFrames.length} frames and ${capturedAudio.length} audio samples.`
+            )
         } else {
             // Start recording
             setIsRecording(true)
-            
+            isRecordingRef.current = true
+
             // Start audio recording if available
             if (selectedAudioDevice && audioContext) {
                 try {
+                    // Ensure audio context is running
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume()
+                    }
+
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: { deviceId: selectedAudioDevice }
+                        audio: { deviceId: selectedAudioDevice },
                     })
+
+                    // Clear previous real-time data
+                    setRealtimeAudioData([])
+
+                    // Set up AudioWorklet for real-time audio processing
+                    const processorNode = audioContext.createScriptProcessor(4096, 1, 1)
+                    const gainNode = audioContext.createGain()
+                    gainNode.gain.value = 0 // Mute to avoid feedback
+
+                    const source = audioContext.createMediaStreamSource(stream)
+                    source.connect(processorNode)
+                    processorNode.connect(gainNode)
+                    gainNode.connect(audioContext.destination)
+
+                    audioProcessorRef.current = processorNode
+
+                    processorNode.onaudioprocess = event => {
+                        if (isRecordingRef.current) {
+                            const inputData = event.inputBuffer.getChannelData(0)
+                            const audioChunk = new Float32Array(inputData)
+
+                            setRealtimeAudioData(prev => {
+                                const newData = [...prev, audioChunk]
+                                // Limit buffer size to prevent memory overflow
+                                return newData.length > maxFrames ? newData.slice(-maxFrames) : newData
+                            })
+                        }
+                    }
 
                     const recorder = new MediaRecorder(stream)
                     const audioChunks: Blob[] = []
@@ -502,23 +564,27 @@ export default function App() {
                             const arrayBuffer = await audioBlob.arrayBuffer()
                             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
-                            setCapturedAudio(prev => [...prev, {
-                                timestamp: performance.now(),
-                                audioBuffer
-                            }])
-                            
+                            setCapturedAudio(prev => [
+                                ...prev,
+                                {
+                                    timestamp: performance.now(),
+                                    audioBuffer,
+                                },
+                            ])
+
                             console.log('Audio captured:', audioBuffer.duration, 'seconds')
                         } catch (error) {
                             console.error('Error processing audio:', error)
                         }
 
-                        // Clean up stream
+                        // Clean up stream and real-time data
                         stream.getTracks().forEach(track => track.stop())
+                        source.disconnect()
                     }
 
                     setMediaRecorder(recorder)
                     recorder.start(100) // Collect data every 100ms
-                    console.log('Audio recording started')
+                    console.log('Audio recording started with real-time analysis')
                 } catch (error) {
                     console.error('Error starting audio recording:', error)
                 }
@@ -539,7 +605,7 @@ export default function App() {
                 cancelAnimationFrame(playbackAnimationFrameRef.current)
                 playbackAnimationFrameRef.current = null
             }
-            
+
             // Stop audio playback
             if (audioSource) {
                 try {
@@ -557,7 +623,7 @@ export default function App() {
             setCurrentFrameIndex(clipTrimStart)
             playbackFrameIndexRef.current = clipTrimStart
             lastPlaybackTime.current = performance.now()
-            
+
             // Start audio playback if available
             if (capturedAudio.length > 0 && audioContext && capturedFrames.length > 0) {
                 try {
@@ -565,27 +631,27 @@ export default function App() {
                     const source = audioContext.createBufferSource()
                     source.buffer = audioBuffer
                     source.connect(audioContext.destination)
-                    
+
                     // Calculate timing based on actual frame timestamps
                     const firstFrameTime = capturedFrames[0].timestamp
                     const lastFrameTime = capturedFrames[capturedFrames.length - 1].timestamp
                     const totalVideoTime = (lastFrameTime - firstFrameTime) / 1000 // Convert to seconds
-                    
+
                     // Calculate trim times based on proportional position in the recording
                     const trimStartRatio = clipTrimStart / (capturedFrames.length - 1)
                     const trimEndRatio = clipTrimEnd / (capturedFrames.length - 1)
-                    
+
                     const trimStartTime = trimStartRatio * audioBuffer.duration
                     const trimEndTime = trimEndRatio * audioBuffer.duration
                     const trimDuration = trimEndTime - trimStartTime
-                    
+
                     source.start(0, trimStartTime, trimDuration)
                     setAudioSource(source)
                     console.log('Audio playback started:', {
                         totalVideoTime,
                         audioBufferDuration: audioBuffer.duration,
                         trimStartTime,
-                        trimDuration
+                        trimDuration,
                     })
                 } catch (error) {
                     console.error('Error starting audio playback:', error)
@@ -669,7 +735,7 @@ export default function App() {
                 cancelAnimationFrame(playbackAnimationFrameRef.current)
                 playbackAnimationFrameRef.current = null
             }
-            
+
             // Clean up audio source
             if (audioSource) {
                 try {
@@ -709,9 +775,24 @@ export default function App() {
         capturedFrames.forEach(frame => frame.imageBitmap.close())
         setCapturedFrames([])
         setCapturedAudio([])
+        setRealtimeAudioData([])
         setCurrentFrameIndex(0)
         setIsPlayingback(false)
         setIsRecording(false)
+        isRecordingRef.current = false
+
+        // Cancel any running animation frames
+        if (realtimeAudioCaptureRef.current) {
+            cancelAnimationFrame(realtimeAudioCaptureRef.current)
+            realtimeAudioCaptureRef.current = null
+        }
+
+        // Disconnect audio processor
+        if (audioProcessorRef.current) {
+            audioProcessorRef.current.disconnect()
+            audioProcessorRef.current = null
+        }
+
         setClipTrimStart(0)
         setClipTrimEnd(0)
 
@@ -858,6 +939,100 @@ export default function App() {
         e.stopPropagation()
     }
 
+    // Apply smoothing filter to waveform data
+    const smoothWaveform = (waveformData: number[]): number[] => {
+        if (waveformData.length < 5) return waveformData
+
+        let smoothed = [...waveformData]
+        const windowSize = 5 // Larger smoothing window
+
+        // Apply moving average filter (multiple passes for smoother result)
+        for (let pass = 0; pass < 2; pass++) {
+            const passData = [...smoothed]
+            for (let i = 2; i < smoothed.length - 2; i++) {
+                let sum = 0
+                let count = 0
+
+                // Average with neighboring points
+                for (
+                    let j = Math.max(0, i - Math.floor(windowSize / 2));
+                    j <= Math.min(smoothed.length - 1, i + Math.floor(windowSize / 2));
+                    j++
+                ) {
+                    sum += passData[j]
+                    count++
+                }
+
+                smoothed[i] = sum / count
+            }
+        }
+
+        // Stronger exponential smoothing for more natural curves
+        const alpha = 0.35 // Increased smoothing factor
+        for (let i = 1; i < smoothed.length; i++) {
+            smoothed[i] = alpha * smoothed[i - 1] + (1 - alpha) * smoothed[i]
+        }
+
+        // Reverse pass for bidirectional smoothing
+        for (let i = smoothed.length - 2; i >= 0; i--) {
+            smoothed[i] = alpha * smoothed[i + 1] + (1 - alpha) * smoothed[i]
+        }
+
+        return smoothed
+    }
+
+    // Generate waveform data from real-time audio chunks
+    const generateRealtimeWaveformData = (audioChunks: Float32Array[], width: number): number[] => {
+        if (audioChunks.length === 0) return []
+
+        // Combine all audio chunks into one array
+        const totalSamples = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const combinedSamples = new Float32Array(totalSamples)
+        let offset = 0
+        for (const chunk of audioChunks) {
+            combinedSamples.set(chunk, offset)
+            offset += chunk.length
+        }
+
+        const samplesPerPixel = combinedSamples.length / width
+        const waveformData: number[] = []
+
+        // Find global max for normalization
+        let globalMax = 0
+        for (let i = 0; i < combinedSamples.length; i++) {
+            globalMax = Math.max(globalMax, Math.abs(combinedSamples[i]))
+        }
+        if (globalMax === 0) globalMax = 1
+
+        // Generate waveform data
+        for (let i = 0; i < width; i++) {
+            const start = Math.floor(i * samplesPerPixel)
+            const end = Math.floor((i + 1) * samplesPerPixel)
+
+            let max = 0
+            let rms = 0
+            let count = 0
+
+            for (let j = start; j < end; j++) {
+                if (j < combinedSamples.length) {
+                    const sample = Math.abs(combinedSamples[j])
+                    max = Math.max(max, sample)
+                    rms += sample * sample
+                    count++
+                }
+            }
+
+            rms = count > 0 ? Math.sqrt(rms / count) : 0
+            const normalizedMax = max / globalMax
+            const normalizedRms = rms / globalMax
+
+            waveformData.push(Math.max(normalizedMax * 0.3, normalizedRms))
+        }
+
+        // Apply smoothing filter
+        return smoothWaveform(waveformData)
+    }
+
     // Generate waveform data from audio buffer
     const generateWaveformData = (audioBuffer: AudioBuffer, width: number): number[] => {
         const samples = audioBuffer.getChannelData(0) // Use first channel
@@ -881,7 +1056,7 @@ export default function App() {
             let max = 0
             let rms = 0
             let count = 0
-            
+
             for (let j = start; j < end; j++) {
                 if (j < samples.length) {
                     const sample = Math.abs(samples[j])
@@ -890,25 +1065,18 @@ export default function App() {
                     count++
                 }
             }
-            
+
             // Normalize and use RMS for smoother waveform visualization
             rms = count > 0 ? Math.sqrt(rms / count) : 0
-            const normalizedMax = (max / globalMax) // Scale to 100% of full height
-            const normalizedRms = (rms / globalMax)
-            
+            const normalizedMax = max / globalMax // Scale to 100% of full height
+            const normalizedRms = rms / globalMax
+
             // Blend max and RMS, normalized to full scale
             waveformData.push(Math.max(normalizedMax * 0.3, normalizedRms))
         }
 
-        console.log('Waveform generated:', {
-            samples: samples.length,
-            width: width,
-            globalMax: globalMax,
-            maxWaveformValue: Math.max(...waveformData),
-            minWaveformValue: Math.min(...waveformData)
-        })
-
-        return waveformData
+        // Apply smoothing filter
+        return smoothWaveform(waveformData)
     }
 
     // Render waveform to canvas
@@ -925,7 +1093,7 @@ export default function App() {
         ctx.scale(pixelDensity, pixelDensity)
 
         ctx.clearRect(0, 0, width, height)
-        
+
         const labelHeight = 16 // Height of the label at bottom (h-4 = 16px)
         const bottomY = height - labelHeight // Zero line right on top of label
         const maxAmplitude = height - labelHeight // Use full available height
@@ -934,12 +1102,12 @@ export default function App() {
         const gradient = ctx.createLinearGradient(0, 0, 0, bottomY)
         gradient.addColorStop(0, 'rgba(99, 102, 241, 0.7)') // 80% opacity at top
         gradient.addColorStop(1, 'rgba(99, 102, 241, 0)') // 20% opacity at bottom
-        
+
         // Draw filled waveform area
         ctx.fillStyle = gradient
         ctx.beginPath()
         ctx.moveTo(0, bottomY)
-        
+
         // Draw waveform peaks going upward from bottom
         for (let x = 0; x < waveformData.length; x++) {
             // Boost amplitude to use full height (since we normalized to 0-1 range)
@@ -947,7 +1115,7 @@ export default function App() {
             const clampedAmplitude = Math.min(amplitude, maxAmplitude) // Don't exceed available height
             ctx.lineTo(x, bottomY - clampedAmplitude)
         }
-        
+
         // Connect back to bottom
         ctx.lineTo(waveformData.length - 1, bottomY)
         ctx.closePath()
@@ -957,7 +1125,7 @@ export default function App() {
         ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)'
         ctx.lineWidth = 1
         ctx.imageSmoothingEnabled = false
-        
+
         // Draw peak line
         ctx.beginPath()
         ctx.moveTo(0, bottomY)
@@ -991,7 +1159,7 @@ export default function App() {
                     />
                     Display Console
                 </label>
-{audioDevices.length > 0 && (
+                {audioDevices.length > 0 && (
                     <label className="flex items-center gap-2 text-sm">
                         <span>Audio Device:</span>
                         <select
@@ -1238,7 +1406,7 @@ export default function App() {
                     >
                         {/* Video Clip */}
                         <div
-                            className="relative bg-primary/5 rounded h-full border border-primary/10 overflow-hidden"
+                            className="relative rounded h-full border border-primary/5 overflow-hidden"
                             style={{
                                 width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
                                 minWidth: '100px',
@@ -1335,13 +1503,13 @@ export default function App() {
                         className="absolute top-0 w-0.5 bg-primary/60 z-10 cursor-ew-resize"
                         style={{
                             left: `${64 + 1 + (currentFrameIndex / Math.max(1, capturedFrames.length - 1)) * ((capturedFrames.length / 30) * 100 * timelineZoom)}px`,
-                            height: `${80 + (mediaRecorder || capturedAudio.length > 0 ? 21 : 0)}px`, // Video track (80px) + audio track (20px) + border (1px)
+                            height: `160px`, // Video track (80px) + audio track (20px) + border (1px)
                             boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
                         }}
                         onMouseDown={onPlayheadMouseDown}
                     >
                         {/* Playhead Handle */}
-                        <div className="absolute -top-1 -left-2 w-4 h-4 bg-primary/80 rounded-full cursor-ew-resize border border-primary/40"></div>
+                        <div className="absolute top-[-8px] left-[-7.5px] w-4 h-4 bg-primary rounded-full cursor-ew-resize border border-background/20"></div>
                     </div>
                 </div>
 
@@ -1361,94 +1529,119 @@ export default function App() {
                         }}
                     >
                         {/* Audio Clip */}
-                        {(mediaRecorder || capturedAudio.length > 0) && (
-                            <div
-                                className="relative bg-primary/3 rounded h-full border border-primary/10 overflow-hidden"
-                                style={{
-                                    width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
-                                    minWidth: '100px',
-                                }}
-                            >
-                                {/* Left Trim Overlay */}
-                                {clipTrimStart > 0 && (
-                                    <div
-                                        className="absolute top-0 left-0 h-full bg-black/50 z-10"
-                                        style={{
-                                            width: `${(clipTrimStart / capturedFrames.length) * 100}%`,
-                                        }}
-                                    ></div>
-                                )}
+                        <div
+                            className="relative rounded h-full border border-primary/5 overflow-hidden"
+                            style={{
+                                width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
+                                minWidth: '100px',
+                            }}
+                        >
+                            {/* Left Trim Overlay */}
+                            {clipTrimStart > 0 && (
+                                <div
+                                    className="absolute top-0 left-0 h-full bg-black/50 z-10"
+                                    style={{
+                                        width: `${(clipTrimStart / capturedFrames.length) * 100}%`,
+                                    }}
+                                ></div>
+                            )}
 
-                                {/* Right Trim Overlay */}
-                                {clipTrimEnd < capturedFrames.length - 1 && (
-                                    <div
-                                        className="absolute top-0 right-0 h-full bg-black/50 z-10"
-                                        style={{
-                                            width: `${((capturedFrames.length - 1 - clipTrimEnd) / capturedFrames.length) * 100}%`,
-                                        }}
-                                    ></div>
-                                )}
+                            {/* Right Trim Overlay */}
+                            {clipTrimEnd < capturedFrames.length - 1 && (
+                                <div
+                                    className="absolute top-0 right-0 h-full bg-black/50 z-10"
+                                    style={{
+                                        width: `${((capturedFrames.length - 1 - clipTrimEnd) / capturedFrames.length) * 100}%`,
+                                    }}
+                                ></div>
+                            )}
 
-                                {/* Audio Waveform */}
-                                <canvas
-                                    className="w-full h-full bg-gradient-to-r from-primary/5 to-primary/10"
-                                    ref={canvas => {
-                                        if (canvas) {
-                                            const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
-                                            
-                                            if (capturedAudio.length > 0 && capturedAudio[0]) {
-                                                // Show actual waveform
-                                                const waveformData = generateWaveformData(
-                                                    capturedAudio[0].audioBuffer,
-                                                    Math.floor(clipWidth)
+                            {/* Audio Waveform */}
+                            <canvas
+                                className="w-full h-full bg-gradient-to-r from-primary/5 to-primary/10"
+                                ref={canvas => {
+                                    if (canvas) {
+                                        const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
+
+                                        if (capturedAudio.length > 0 && capturedAudio[0]) {
+                                            // Show final waveform from recorded audio
+                                            const waveformData = generateWaveformData(
+                                                capturedAudio[0].audioBuffer,
+                                                Math.floor(clipWidth)
+                                            )
+                                            const canvasHeight = canvas.clientHeight || 56
+                                            renderWaveform(canvas, waveformData, Math.floor(clipWidth), canvasHeight)
+                                        } else if (isRecording) {
+                                            // Show real-time waveform during recording (or recording indicator if no data yet)
+                                            const canvasHeight = canvas.clientHeight || 56
+
+                                            if (realtimeAudioData.length > 0) {
+                                                // Use a fixed width based on expected recording duration rather than current frames
+                                                const expectedDurationSeconds = 10 // Assume max 10 second clips
+                                                const fixedWidth = expectedDurationSeconds * 100 * timelineZoom
+
+                                                // Generate and render real-time waveform with stable width
+                                                const waveformData = generateRealtimeWaveformData(
+                                                    realtimeAudioData,
+                                                    Math.floor(fixedWidth)
                                                 )
-                                                const canvasHeight = canvas.clientHeight || 56 // Use actual canvas height (64px clip - 16px label = 48px available)
-                                                renderWaveform(canvas, waveformData, Math.floor(clipWidth), canvasHeight)
-                                            } else if (mediaRecorder) {
-                                                // Show recording indicator
+                                                renderWaveform(
+                                                    canvas,
+                                                    waveformData,
+                                                    Math.floor(fixedWidth),
+                                                    canvasHeight
+                                                )
+                                            } else {
+                                                // Show recording indicator when no audio data yet
+                                                const expectedDurationSeconds = 10 // Same as above
+                                                const fixedWidth = expectedDurationSeconds * 100 * timelineZoom
+
                                                 const ctx = canvas.getContext('2d')
                                                 if (ctx) {
-                                                    const canvasHeight = canvas.clientHeight || 56
-                                                    canvas.width = Math.floor(clipWidth)
+                                                    canvas.width = Math.floor(fixedWidth)
                                                     canvas.height = canvasHeight
                                                     ctx.fillStyle = 'rgba(99, 102, 241, 0.1)'
                                                     ctx.fillRect(0, 0, canvas.width, canvas.height)
-                                                    
+
                                                     // Add "Recording..." text
                                                     ctx.fillStyle = 'rgba(99, 102, 241, 0.6)'
                                                     ctx.font = '12px monospace'
                                                     ctx.textAlign = 'center'
-                                                    ctx.fillText('🎤 Recording...', canvas.width / 2, (canvasHeight - 16) / 2 + 4) // Position above label area
+                                                    ctx.fillText(
+                                                        '🎤 Recording...',
+                                                        canvas.width / 2,
+                                                        (canvasHeight - 16) / 2 + 4
+                                                    )
                                                 }
                                             }
                                         }
-                                    }}
-                                />
+                                    }
+                                }}
+                            />
 
-                                {/* Audio Clip Label */}
-                                <div className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-start pl-2 bg-primary/3 text-xs text-primary/70 font-medium">
-                                    Audio Clip
-                                </div>
-
-                                {/* Left Trim Handle */}
-                                <div
-                                    className="absolute top-0 left-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                    onMouseDown={onLeftTrimMouseDown}
-                                    style={{
-                                        borderRadius: '2px 0 0 2px',
-                                    }}
-                                ></div>
-
-                                {/* Right Trim Handle */}
-                                <div
-                                    className="absolute top-0 right-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                    onMouseDown={onRightTrimMouseDown}
-                                    style={{
-                                        borderRadius: '0 2px 2px 0',
-                                    }}
-                                ></div>
+                            {/* Audio Clip Label */}
+                            <div className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-start pl-2 bg-primary/3 text-xs text-primary/70 font-medium">
+                                Audio Clip
                             </div>
-                        )}
+
+                            {/* Left Trim Handle */}
+                            <div
+                                className="absolute top-0 left-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
+                                onMouseDown={onLeftTrimMouseDown}
+                                style={{
+                                    borderRadius: '2px 0 0 2px',
+                                }}
+                            ></div>
+
+                            {/* Right Trim Handle */}
+                            <div
+                                className="absolute top-0 right-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
+                                onMouseDown={onRightTrimMouseDown}
+                                style={{
+                                    borderRadius: '0 2px 2px 0',
+                                }}
+                            ></div>
+                        </div>
                     </div>
                 </div>
             </div>
