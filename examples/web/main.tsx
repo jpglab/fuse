@@ -210,15 +210,14 @@ export default function App() {
     }
 
     const onToggleLiveViewImageQuality = async () => {
-        if (!settings) {
-            console.error('No settings found')
-            return
-        }
-        const newSetting = settings?.liveViewImageQuality === 'HIGH' ? 'LOW' : 'HIGH'
-        console.log('Toggling live view image quality to', newSetting)
-        await camera?.setDeviceProperty('LIVE_VIEW_IMAGE_QUALITY', newSetting)
-        console.log('Set live view image quality to', newSetting)
-        setSettings({ ...settings, liveViewImageQuality: newSetting })
+        stopStreaming()
+        await new Promise(resolve => setTimeout(resolve, 100))
+        await camera?.setDeviceProperty(
+            'LIVE_VIEW_IMAGE_QUALITY',
+            settings?.liveViewImageQuality === 'HIGH' ? 'LOW' : 'HIGH'
+        )
+        await new Promise(resolve => setTimeout(resolve, 100))
+        startStreaming()
     }
 
     return (

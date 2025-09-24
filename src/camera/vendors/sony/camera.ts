@@ -109,7 +109,8 @@ export class SonyCamera extends GenericPTPCamera {
 
         // Determine which operation to use based on property type
         // Some properties use SET_DEVICE_PROPERTY_VALUE, others use CONTROL_DEVICE_PROPERTY
-        const isControlProperty = /shutter|focus|live.*view/i.test(property.name)
+        // Control properties are button-like actions, not settings
+        const isControlProperty = /shutter|focus|^SET_LIVE_VIEW_ENABLE$/i.test(property.name)
         console.log('isControlProperty', isControlProperty, property.name)
 
         const operation = isControlProperty

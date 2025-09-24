@@ -364,7 +364,7 @@ export const SonyProperties = {
     LIVE_VIEW_IMAGE_QUALITY: {
         name: 'LIVE_VIEW_IMAGE_QUALITY',
         code: 0xd26a,
-        type: DataType.UINT8,
+        type: DataType.UINT16,
         description: 'Get/Set the live view image quality.',
         writable: true,
         enum: {
