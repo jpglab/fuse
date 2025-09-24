@@ -5,7 +5,7 @@ import * as ReactDOM from 'react-dom/client'
 import { Camera } from '@api/camera'
 import { useEffect, useState, useRef } from 'react'
 import { CameraInfo } from '@camera/interfaces/camera.interface'
-import type { ButtonHTMLAttributes, DetailedHTMLProps } from 'react'
+import type { ButtonHTMLAttributes } from 'react'
 
 const downloadFile = (data: Uint8Array, filename: string, mimeType: string = 'application/octet-stream') => {
     const blob = new Blob([new Uint8Array(data)], { type: mimeType })
