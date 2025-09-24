@@ -1146,6 +1146,452 @@ export default function App() {
         ctx.stroke()
     }
 
+    // Canvas-based timeline rendering
+    const timelineCanvasRef = useRef<HTMLCanvasElement>(null)
+    const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
+    const [isDraggingLeftTrim, setIsDraggingLeftTrim] = useState(false)
+    const [isDraggingRightTrim, setIsDraggingRightTrim] = useState(false)
+    
+    const renderTimelineCanvas = () => {
+        const canvas = timelineCanvasRef.current
+        if (!canvas) return
+        
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        
+        // Set canvas size with high DPI
+        const rect = canvas.getBoundingClientRect()
+        const pixelRatio = window.devicePixelRatio || 1
+        canvas.width = rect.width * pixelRatio
+        canvas.height = rect.height * pixelRatio
+        ctx.scale(pixelRatio, pixelRatio)
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, rect.width, rect.height)
+        
+        // Timeline dimensions
+        const trackLabelWidth = 64
+        const videoTrackHeight = 80
+        const audioTrackHeight = 80
+        const totalHeight = videoTrackHeight + audioTrackHeight
+        const clipWidth = Math.max(100, (capturedFrames.length / 30) * 100 * timelineZoom)
+        const timecodeHeight = 20
+        const topPadding = timecodeHeight // Space for timecode and playhead head
+        
+        // Draw background for tracks only
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+        ctx.fillRect(0, topPadding, rect.width, totalHeight)
+        
+        // Draw timecode ruler background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
+        ctx.fillRect(0, 0, rect.width, timecodeHeight)
+        
+        // Draw timecode markers
+        if (capturedFrames.length > 0) {
+            const totalDuration = capturedFrames.length / 30 // Assume 30fps
+            const pixelsPerSecond = 100 * timelineZoom
+            const secondInterval = Math.max(1, Math.floor(1 / timelineZoom)) // Adjust interval based on zoom
+            
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.6)'
+            ctx.font = '10px monospace'
+            ctx.textAlign = 'left'
+            
+            for (let second = 0; second <= totalDuration; second += secondInterval) {
+                const x = trackLabelWidth + (second * pixelsPerSecond)
+                if (x < rect.width) {
+                    // Draw tick mark
+                    ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)'
+                    ctx.lineWidth = 1
+                    ctx.beginPath()
+                    ctx.moveTo(x, 0)
+                    ctx.lineTo(x, timecodeHeight)
+                    ctx.stroke()
+                    
+                    // Draw timecode
+                    const minutes = Math.floor(second / 60)
+                    const secs = second % 60
+                    const timecode = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+                    ctx.fillText(timecode, x + 4, timecodeHeight - 4)
+                }
+            }
+        }
+        
+        // Draw track labels
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+        ctx.fillRect(0, topPadding, trackLabelWidth, videoTrackHeight)
+        ctx.fillRect(0, topPadding + videoTrackHeight, trackLabelWidth, audioTrackHeight)
+        
+        // Draw track separators
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.1)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(trackLabelWidth, topPadding)
+        ctx.lineTo(trackLabelWidth, topPadding + totalHeight)
+        ctx.moveTo(0, topPadding + videoTrackHeight)
+        ctx.lineTo(rect.width, topPadding + videoTrackHeight)
+        ctx.stroke()
+        
+        // Draw track labels text
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.5)'
+        ctx.font = '12px monospace'
+        ctx.textAlign = 'center'
+        ctx.fillText('V1', trackLabelWidth / 2, topPadding + videoTrackHeight / 2 + 4)
+        ctx.fillText('A1', trackLabelWidth / 2, topPadding + videoTrackHeight + audioTrackHeight / 2 + 4)
+        
+        if (capturedFrames.length > 0) {
+            // Draw video track clip (with 2px vertical margin)
+            const clipMargin = 2
+            drawVideoClip(ctx, trackLabelWidth, topPadding + clipMargin, clipWidth, videoTrackHeight - (clipMargin * 2))
+            
+            // Draw audio track clip (with 2px vertical margin)
+            drawAudioClip(ctx, trackLabelWidth, topPadding + videoTrackHeight + clipMargin, clipWidth, audioTrackHeight - (clipMargin * 2))
+            
+            // Draw trim overlays
+            drawTrimOverlays(ctx, trackLabelWidth, topPadding, clipWidth, totalHeight)
+            
+            // Draw playhead
+            drawPlayhead(ctx, trackLabelWidth, topPadding + totalHeight)
+        }
+    }
+    
+    const drawVideoClip = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) => {
+        // Create rounded clip path
+        const borderRadius = 4
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(x, y, width, height, borderRadius)
+        ctx.clip()
+        
+        // Clip background
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.1)'
+        ctx.fillRect(x, y, width, height)
+        
+        // Calculate proper thumbnail dimensions to fill the full track height
+        const videoAspectRatio = 16 / 9 // Assume 16:9 for camera feeds
+        const availableHeight = height - 16 // Reserve space for label
+        const availableWidth = width
+        
+        // Make thumbnails fill the full available height
+        let thumbnailHeight = availableHeight
+        let thumbnailWidth = thumbnailHeight * videoAspectRatio
+        
+        // Don't scale down - let thumbnails be their natural size and tile across
+        
+        // Draw thumbnails extending across full clip width
+        const totalThumbnails = Math.ceil(availableWidth / thumbnailWidth)
+        for (let i = 0; i < totalThumbnails; i++) {
+            const frameIndex = Math.floor((i / totalThumbnails) * capturedFrames.length)
+            const frame = capturedFrames[frameIndex]
+            
+            if (frame?.imageBitmap) {
+                const thumbnailX = x + (i * thumbnailWidth)
+                const thumbnailY = y
+                
+                // Only draw if thumbnail starts within bounds
+                if (thumbnailX < x + availableWidth) {
+                    // Calculate how much of the thumbnail to draw (for overflow clipping)
+                    const maxDrawWidth = Math.max(0, x + availableWidth - thumbnailX)
+                    const actualDrawWidth = Math.min(thumbnailWidth, maxDrawWidth)
+                    
+                    if (actualDrawWidth > 0) {
+                        // Calculate source rectangle to maintain aspect ratio
+                        const sourceWidth = (actualDrawWidth / thumbnailWidth) * frame.imageBitmap.width
+                        
+                        ctx.drawImage(
+                            frame.imageBitmap,
+                            0, 0, sourceWidth, frame.imageBitmap.height,
+                            thumbnailX, thumbnailY, actualDrawWidth, thumbnailHeight
+                        )
+                    }
+                }
+            }
+        }
+        
+        ctx.restore()
+        
+        // Clip border with rounded corners
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.3)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.roundRect(x, y, width, height, borderRadius)
+        ctx.stroke()
+        
+        // Clip label with rounded bottom corners
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(x, y + height - 16, width, 16, [0, 0, borderRadius, borderRadius])
+        ctx.clip()
+        ctx.fillStyle = 'rgba(0,0,0, 0.7)'
+        ctx.fillRect(x, y + height - 16, width, 16)
+        ctx.restore()
+        
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.7)'
+        ctx.font = '10px monospace'
+        ctx.textAlign = 'left'
+        ctx.fillText('Video Clip', x + 8, y + height - 4)
+    }
+    
+    const drawAudioClip = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) => {
+        // Create rounded clip path
+        const borderRadius = 4
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(x, y, width, height, borderRadius)
+        ctx.clip()
+        
+        // Clip background
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.1)'
+        ctx.fillRect(x, y, width, height)
+        
+        // Draw waveform
+        if (capturedAudio.length > 0 && capturedAudio[0]) {
+            const waveformData = generateWaveformData(capturedAudio[0].audioBuffer, Math.floor(width))
+            drawWaveformInCanvas(ctx, x, y, width, height - 16, waveformData)
+        } else if (isRecording && realtimeAudioData.length > 0) {
+            const waveformData = generateRealtimeWaveformData(realtimeAudioData, Math.floor(width))
+            drawWaveformInCanvas(ctx, x, y, width, height - 16, waveformData)
+        } else if (isRecording) {
+            // Recording indicator
+            ctx.fillStyle = 'rgba(99, 102, 241, 0.6)'
+            ctx.font = '12px monospace'
+            ctx.textAlign = 'center'
+            ctx.fillText('🎤 Recording...', x + width / 2, y + height / 2)
+        }
+        
+        ctx.restore()
+        
+        // Clip border with rounded corners
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.3)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.roundRect(x, y, width, height, borderRadius)
+        ctx.stroke()
+        
+        // Clip label with rounded bottom corners
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(x, y + height - 16, width, 16, [0, 0, borderRadius, borderRadius])
+        ctx.clip()
+        ctx.fillStyle = 'rgba(0,0,0, 0.7)'
+        ctx.fillRect(x, y + height - 16, width, 16)
+        ctx.restore()
+        
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.7)'
+        ctx.font = '10px monospace'
+        ctx.textAlign = 'left'
+        ctx.fillText('Audio Clip', x + 8, y + height - 4)
+    }
+    
+    const drawWaveformInCanvas = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, waveformData: number[]) => {
+        if (waveformData.length === 0) return
+        
+        const bottomY = y + height
+        const maxAmplitude = height
+        
+        // Create gradient fill
+        const gradient = ctx.createLinearGradient(x, y, x, bottomY)
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.7)')
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.1)')
+        
+        // Draw filled waveform area
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.moveTo(x, bottomY)
+        
+        for (let i = 0; i < waveformData.length; i++) {
+            const amplitude = waveformData[i] * maxAmplitude * 2
+            const clampedAmplitude = Math.min(amplitude, maxAmplitude)
+            ctx.lineTo(x + i, bottomY - clampedAmplitude)
+        }
+        
+        ctx.lineTo(x + waveformData.length, bottomY)
+        ctx.closePath()
+        ctx.fill()
+        
+        // Draw waveform outline
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(x, bottomY)
+        for (let i = 0; i < waveformData.length; i++) {
+            const amplitude = waveformData[i] * maxAmplitude * 2
+            const clampedAmplitude = Math.min(amplitude, maxAmplitude)
+            ctx.lineTo(x + i, bottomY - clampedAmplitude)
+        }
+        ctx.stroke()
+    }
+    
+    const drawTrimOverlays = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) => {
+        if (clipTrimStart > 0) {
+            const trimWidth = (clipTrimStart / Math.max(1, capturedFrames.length - 1)) * width
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+            ctx.fillRect(x, y, trimWidth, height)
+        }
+        
+        if (clipTrimEnd < capturedFrames.length - 1) {
+            const trimStartX = ((clipTrimEnd + 1) / Math.max(1, capturedFrames.length - 1)) * width
+            const trimWidth = width - trimStartX
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+            ctx.fillRect(x + trimStartX, y, trimWidth, height)
+        }
+    }
+    
+    const drawPlayhead = (ctx: CanvasRenderingContext2D, offsetX: number, totalHeight: number) => {
+        const clipWidth = Math.max(100, (capturedFrames.length / 30) * 100 * timelineZoom)
+        const playheadX = offsetX + (currentFrameIndex / Math.max(1, capturedFrames.length - 1)) * clipWidth
+        
+        // Playhead line
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.8)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(playheadX, 8)
+        ctx.lineTo(playheadX, totalHeight)
+        ctx.stroke()
+        
+        // Playhead circular head
+        ctx.fillStyle = 'rgba(99, 102, 241, 1)'
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.arc(playheadX, 8, 6, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+    }
+    
+    // Update timeline rendering on state changes
+    useEffect(() => {
+        renderTimelineCanvas()
+    }, [capturedFrames, capturedAudio, realtimeAudioData, isRecording, currentFrameIndex, clipTrimStart, clipTrimEnd, timelineZoom])
+
+    // Handle global mouse events for canvas dragging
+    useEffect(() => {
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+            const canvas = timelineCanvasRef.current
+            if (!canvas || (!isDraggingPlayhead && !isDraggingLeftTrim && !isDraggingRightTrim)) return
+            
+            const rect = canvas.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            
+            const trackLabelWidth = 64
+            const clipX = trackLabelWidth
+            const clipWidth = Math.max(100, (capturedFrames.length / 30) * 100 * timelineZoom)
+            
+            if (isDraggingPlayhead) {
+                const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+                const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+                onScrubTimeline(frameIndex)
+            } else if (isDraggingLeftTrim) {
+                const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+                const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+                const newLeftTrim = Math.max(0, Math.min(clipTrimEnd - 1, frameIndex))
+                setClipTrimStart(newLeftTrim)
+            } else if (isDraggingRightTrim) {
+                const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+                const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+                const newRightTrim = Math.max(clipTrimStart + 1, Math.min(capturedFrames.length - 1, frameIndex))
+                setClipTrimEnd(newRightTrim)
+            }
+        }
+
+        const handleGlobalMouseUp = () => {
+            setIsDraggingPlayhead(false)
+            setIsDraggingLeftTrim(false)
+            setIsDraggingRightTrim(false)
+        }
+
+        if (isDraggingPlayhead || isDraggingLeftTrim || isDraggingRightTrim) {
+            document.addEventListener('mousemove', handleGlobalMouseMove)
+            document.addEventListener('mouseup', handleGlobalMouseUp)
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleGlobalMouseMove)
+            document.removeEventListener('mouseup', handleGlobalMouseUp)
+        }
+    }, [isDraggingPlayhead, isDraggingLeftTrim, isDraggingRightTrim, capturedFrames.length, timelineZoom, clipTrimStart, clipTrimEnd, onScrubTimeline])
+    
+    // Handle canvas mouse events
+    const handleTimelineMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const canvas = timelineCanvasRef.current
+        if (!canvas) return
+        
+        const rect = canvas.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top
+        
+        const trackLabelWidth = 64
+        const videoTrackHeight = 80
+        const topPadding = 20
+        const clipX = trackLabelWidth
+        const clipWidth = Math.max(100, (capturedFrames.length / 30) * 100 * timelineZoom)
+        
+        // Check if clicking on playhead (with expanded tolerance)
+        const playheadX = clipX + (currentFrameIndex / Math.max(1, capturedFrames.length - 1)) * clipWidth
+        if (Math.abs(x - playheadX) < 8 && y >= topPadding) {
+            setIsDraggingPlayhead(true)
+            return
+        }
+        
+        // Check if clicking on trim handles (only in track areas)
+        if (x >= clipX && x <= clipX + clipWidth && y >= topPadding) {
+            const leftTrimX = clipX + (clipTrimStart / Math.max(1, capturedFrames.length - 1)) * clipWidth
+            const rightTrimX = clipX + ((clipTrimEnd + 1) / Math.max(1, capturedFrames.length - 1)) * clipWidth
+            
+            if (Math.abs(x - leftTrimX) < 8) {
+                setIsDraggingLeftTrim(true)
+                return
+            }
+            
+            if (Math.abs(x - rightTrimX) < 8) {
+                setIsDraggingRightTrim(true)
+                return
+            }
+        }
+        
+        // Allow scrubbing by clicking anywhere in the timeline area (including timecode ruler)
+        if (x >= clipX && x <= clipX + clipWidth) {
+            const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+            const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+            onScrubTimeline(frameIndex)
+            // Start dragging playhead after scrubbing
+            setIsDraggingPlayhead(true)
+        }
+    }
+    
+    const handleTimelineMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const canvas = timelineCanvasRef.current
+        if (!canvas) return
+        
+        const rect = canvas.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        
+        const trackLabelWidth = 64
+        const clipX = trackLabelWidth
+        const clipWidth = Math.max(100, (capturedFrames.length / 30) * 100 * timelineZoom)
+        
+        if (isDraggingPlayhead) {
+            const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+            const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+            onScrubTimeline(frameIndex)
+        } else if (isDraggingLeftTrim) {
+            const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+            const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+            const newLeftTrim = Math.max(0, Math.min(clipTrimEnd - 1, frameIndex))
+            setClipTrimStart(newLeftTrim)
+        } else if (isDraggingRightTrim) {
+            const progress = Math.max(0, Math.min(1, (x - clipX) / clipWidth))
+            const frameIndex = Math.floor(progress * (capturedFrames.length - 1))
+            const newRightTrim = Math.max(clipTrimStart + 1, Math.min(capturedFrames.length - 1, frameIndex))
+            setClipTrimEnd(newRightTrim)
+        }
+    }
+    
+    const handleTimelineMouseUp = () => {
+        setIsDraggingPlayhead(false)
+        setIsDraggingLeftTrim(false)
+        setIsDraggingRightTrim(false)
+    }
+
     return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
             <div className="flex flex-row items-center justify-center gap-4 flex-wrap">
@@ -1325,7 +1771,7 @@ export default function App() {
                 </div>
             </div>
 
-            {/* Video Editor Timeline */}
+            {/* Canvas-Based Video Editor Timeline */}
             <div className="w-full max-w-[80vw] border border-primary/10 rounded-md bg-primary/10 overflow-hidden">
                 {/* Timeline Header */}
                 <div className="flex items-center justify-between px-3 py-1 border-b border-primary/10 bg-black/40">
@@ -1372,278 +1818,16 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Timeline Ruler */}
-                <div className="relative h-6 bg-black/40 border-b border-primary/10">
-                    {/* Left spacer to align with track content */}
-                    <div className="absolute left-0 top-0 w-16 h-full=border-r border-primary/10"></div>
-                    <div className="absolute left-16 top-0 right-0 flex items-center h-full text-xs text-primary/50">
-                        {Array.from({ length: Math.ceil(capturedFrames.length / 30) + 1 }, (_, i) => (
-                            <div
-                                key={i}
-                                className="flex-shrink-0 flex items-center"
-                                style={{ width: `${100 * timelineZoom}px` }}
-                            >
-                                <span className="text-xs">{i}s</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Video Track */}
-                <div className="relative h-20 bg-black/50 timeline-track-container">
-                    {/* Track Label */}
-                    <div className="absolute left-0 top-0 w-16 h-full bg-black/40 border-r border-primary/10 flex items-center justify-center">
-                        <span className="text-xs text-primary/50 writing-mode-vertical transform">V1</span>
-                    </div>
-
-                    {/* Clip Container */}
-                    <div
-                        className="absolute left-16 top-2 h-16 overflow-hidden"
-                        style={{
-                            width: `calc(100% - 64px)`,
-                            scrollBehavior: 'smooth',
-                        }}
-                    >
-                        {/* Video Clip */}
-                        <div
-                            className="relative rounded h-full border border-primary/5 overflow-hidden"
-                            style={{
-                                width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
-                                minWidth: '100px',
-                            }}
-                        >
-                            {/* Left Trim Overlay */}
-                            {clipTrimStart > 0 && (
-                                <div
-                                    className="absolute top-0 left-0 h-full bg-black/50 z-10"
-                                    style={{
-                                        width: `${(clipTrimStart / capturedFrames.length) * 100}%`,
-                                    }}
-                                ></div>
-                            )}
-
-                            {/* Right Trim Overlay */}
-                            {clipTrimEnd < capturedFrames.length - 1 && (
-                                <div
-                                    className="absolute top-0 right-0 h-full bg-black/50 z-10"
-                                    style={{
-                                        width: `${((capturedFrames.length - 1 - clipTrimEnd) / capturedFrames.length) * 100}%`,
-                                    }}
-                                ></div>
-                            )}
-                            {/* Clip Preview Frames */}
-                            {(() => {
-                                const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
-                                const thumbnailWidth = 60 // Fixed width for thumbnails
-                                const numThumbnails = Math.ceil(clipWidth / thumbnailWidth) // Use ceil to fill entirely, overflow will be clipped
-
-                                return Array.from({ length: numThumbnails }, (_, i) => {
-                                    // Calculate which frame this thumbnail represents
-                                    const timePosition = (i * thumbnailWidth) / clipWidth
-                                    const frameIndex = Math.floor(timePosition * capturedFrames.length)
-                                    const frame = capturedFrames[frameIndex]
-
-                                    return (
-                                        <div
-                                            key={`preview-${i}`}
-                                            className="absolute top-0 border-r border-primary/20 overflow-hidden bg-black"
-                                            style={{
-                                                left: `${i * thumbnailWidth}px`,
-                                                width: `${thumbnailWidth}px`,
-                                                height: `calc(100% - 20px)`, // Leave space for label at bottom
-                                            }}
-                                        >
-                                            <canvas
-                                                width={frame?.imageBitmap.width || 1}
-                                                height={frame?.imageBitmap.height || 1}
-                                                className="w-full h-full object-cover"
-                                                ref={canvas => {
-                                                    if (canvas && frame) {
-                                                        const ctx = canvas.getContext('2d')
-                                                        if (ctx) {
-                                                            canvas.width = frame.imageBitmap.width
-                                                            canvas.height = frame.imageBitmap.height
-                                                            ctx.drawImage(frame.imageBitmap, 0, 0)
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    )
-                                })
-                            })()}
-
-                            {/* Clip Label */}
-                            <div className="absolute bottom-0 left-0 right-0 h-5 flex items-center justify-start pl-2 bg-primary/5 text-xs text-primary/90 font-medium">
-                                Recorded Clip
-                            </div>
-
-                            {/* Left Trim Handle */}
-                            <div
-                                className="absolute top-0 left-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                onMouseDown={onLeftTrimMouseDown}
-                                style={{
-                                    borderRadius: '2px 0 0 2px',
-                                }}
-                            ></div>
-
-                            {/* Right Trim Handle */}
-                            <div
-                                className="absolute top-0 right-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                onMouseDown={onRightTrimMouseDown}
-                                style={{
-                                    borderRadius: '0 2px 2px 0',
-                                }}
-                            ></div>
-                        </div>
-                    </div>
-
-                    {/* Vertical Playhead */}
-                    <div
-                        className="absolute top-0 w-0.5 bg-primary/60 z-10 cursor-ew-resize"
-                        style={{
-                            left: `${64 + 1 + (currentFrameIndex / Math.max(1, capturedFrames.length - 1)) * ((capturedFrames.length / 30) * 100 * timelineZoom)}px`,
-                            height: `160px`, // Video track (80px) + audio track (20px) + border (1px)
-                            boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
-                        }}
-                        onMouseDown={onPlayheadMouseDown}
-                    >
-                        {/* Playhead Handle */}
-                        <div className="absolute top-[-8px] left-[-7.5px] w-4 h-4 bg-primary rounded-full cursor-ew-resize border border-background/20"></div>
-                    </div>
-                </div>
-
-                {/* Audio Track */}
-                <div className="relative h-20 bg-black/60 border-t border-primary/10">
-                    {/* Track Label */}
-                    <div className="absolute left-0 top-0 w-16 h-full bg-black/40 border-r border-primary/10 flex items-center justify-center">
-                        <span className="text-xs text-primary/50 writing-mode-vertical transform">A1</span>
-                    </div>
-
-                    {/* Audio Clip Container */}
-                    <div
-                        className="absolute left-16 top-2 h-16 overflow-hidden"
-                        style={{
-                            width: `calc(100% - 64px)`,
-                            scrollBehavior: 'smooth',
-                        }}
-                    >
-                        {/* Audio Clip */}
-                        <div
-                            className="relative rounded h-full border border-primary/5 overflow-hidden"
-                            style={{
-                                width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
-                                minWidth: '100px',
-                            }}
-                        >
-                            {/* Left Trim Overlay */}
-                            {clipTrimStart > 0 && (
-                                <div
-                                    className="absolute top-0 left-0 h-full bg-black/50 z-10"
-                                    style={{
-                                        width: `${(clipTrimStart / capturedFrames.length) * 100}%`,
-                                    }}
-                                ></div>
-                            )}
-
-                            {/* Right Trim Overlay */}
-                            {clipTrimEnd < capturedFrames.length - 1 && (
-                                <div
-                                    className="absolute top-0 right-0 h-full bg-black/50 z-10"
-                                    style={{
-                                        width: `${((capturedFrames.length - 1 - clipTrimEnd) / capturedFrames.length) * 100}%`,
-                                    }}
-                                ></div>
-                            )}
-
-                            {/* Audio Waveform */}
-                            <canvas
-                                className="w-full h-full bg-gradient-to-r from-primary/5 to-primary/10"
-                                ref={canvas => {
-                                    if (canvas) {
-                                        const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
-
-                                        if (capturedAudio.length > 0 && capturedAudio[0]) {
-                                            // Show final waveform from recorded audio
-                                            const waveformData = generateWaveformData(
-                                                capturedAudio[0].audioBuffer,
-                                                Math.floor(clipWidth)
-                                            )
-                                            const canvasHeight = canvas.clientHeight || 56
-                                            renderWaveform(canvas, waveformData, Math.floor(clipWidth), canvasHeight)
-                                        } else if (isRecording) {
-                                            // Show real-time waveform during recording (or recording indicator if no data yet)
-                                            const canvasHeight = canvas.clientHeight || 56
-
-                                            if (realtimeAudioData.length > 0) {
-                                                // Use a fixed width based on expected recording duration rather than current frames
-                                                const expectedDurationSeconds = 10 // Assume max 10 second clips
-                                                const fixedWidth = expectedDurationSeconds * 100 * timelineZoom
-
-                                                // Generate and render real-time waveform with stable width
-                                                const waveformData = generateRealtimeWaveformData(
-                                                    realtimeAudioData,
-                                                    Math.floor(fixedWidth)
-                                                )
-                                                renderWaveform(
-                                                    canvas,
-                                                    waveformData,
-                                                    Math.floor(fixedWidth),
-                                                    canvasHeight
-                                                )
-                                            } else {
-                                                // Show recording indicator when no audio data yet
-                                                const expectedDurationSeconds = 10 // Same as above
-                                                const fixedWidth = expectedDurationSeconds * 100 * timelineZoom
-
-                                                const ctx = canvas.getContext('2d')
-                                                if (ctx) {
-                                                    canvas.width = Math.floor(fixedWidth)
-                                                    canvas.height = canvasHeight
-                                                    ctx.fillStyle = 'rgba(99, 102, 241, 0.1)'
-                                                    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-                                                    // Add "Recording..." text
-                                                    ctx.fillStyle = 'rgba(99, 102, 241, 0.6)'
-                                                    ctx.font = '12px monospace'
-                                                    ctx.textAlign = 'center'
-                                                    ctx.fillText(
-                                                        '🎤 Recording...',
-                                                        canvas.width / 2,
-                                                        (canvasHeight - 16) / 2 + 4
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }}
-                            />
-
-                            {/* Audio Clip Label */}
-                            <div className="absolute bottom-0 left-0 right-0 h-4 flex items-center justify-start pl-2 bg-primary/3 text-xs text-primary/70 font-medium">
-                                Audio Clip
-                            </div>
-
-                            {/* Left Trim Handle */}
-                            <div
-                                className="absolute top-0 left-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                onMouseDown={onLeftTrimMouseDown}
-                                style={{
-                                    borderRadius: '2px 0 0 2px',
-                                }}
-                            ></div>
-
-                            {/* Right Trim Handle */}
-                            <div
-                                className="absolute top-0 right-0 w-2 h-full bg-primary/0 cursor-ew-resize hover:bg-primary/60 transition-colors z-20"
-                                onMouseDown={onRightTrimMouseDown}
-                                style={{
-                                    borderRadius: '0 2px 2px 0',
-                                }}
-                            ></div>
-                        </div>
-                    </div>
-                </div>
+                {/* Canvas Timeline */}
+                <canvas
+                    ref={timelineCanvasRef}
+                    className="w-full cursor-pointer"
+                    height="180"
+                    onMouseDown={handleTimelineMouseDown}
+                    onMouseMove={handleTimelineMouseMove}
+                    onMouseUp={handleTimelineMouseUp}
+                    style={{ display: 'block', height: '180px' }}
+                />
             </div>
 
             {/* Terminal-like console output */}
