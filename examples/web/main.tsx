@@ -21,48 +21,71 @@ interface ConsoleMessage {
     timestamp: number
 }
 
-const useConsoleCapture = () => {
+interface CapturedFrame {
+    imageBitmap: ImageBitmap
+    timestamp: number
+    settings: {
+        aperture: string
+        shutterSpeed: string
+        iso: string
+        liveViewImageQuality: string
+    }
+}
+
+const useConsoleCapture = (enabled: boolean) => {
     const [messages, setMessages] = useState<ConsoleMessage[]>([])
-    
+
     useEffect(() => {
+        if (!enabled) {
+            setMessages([])
+            return
+        }
+
         // Store original console methods
         const originalLog = console.log
         const originalWarn = console.warn
         const originalError = console.error
         const originalInfo = console.info
-        
+
         const captureMessage = (type: ConsoleMessage['type'], args: any[]) => {
             // Call original console method
-            const original = type === 'log' ? originalLog : 
-                           type === 'warn' ? originalWarn :
-                           type === 'error' ? originalError : originalInfo
+            const original =
+                type === 'log'
+                    ? originalLog
+                    : type === 'warn'
+                      ? originalWarn
+                      : type === 'error'
+                        ? originalError
+                        : originalInfo
             original.apply(console, args)
-            
+
             // Capture and format message
-            const message = args.map(arg => {
-                if (typeof arg === 'object') {
-                    try {
-                        return JSON.stringify(arg, null, 2)
-                    } catch {
-                        return String(arg)
+            const message = args
+                .map(arg => {
+                    if (typeof arg === 'object') {
+                        try {
+                            return JSON.stringify(arg, null, 2)
+                        } catch {
+                            return String(arg)
+                        }
                     }
-                }
-                return String(arg)
-            }).join(' ')
-            
+                    return String(arg)
+                })
+                .join(' ')
+
             setMessages(prev => {
                 // If we're at 10 messages, remove the oldest one before adding new
                 const newMessages = prev.length >= 10 ? prev.slice(1) : prev
                 return [...newMessages, { type, message, timestamp: Date.now() }]
             })
         }
-        
+
         // Override console methods
         console.log = (...args) => captureMessage('log', args)
         console.warn = (...args) => captureMessage('warn', args)
         console.error = (...args) => captureMessage('error', args)
         console.info = (...args) => captureMessage('info', args)
-        
+
         // Restore on unmount
         return () => {
             console.log = originalLog
@@ -70,8 +93,8 @@ const useConsoleCapture = () => {
             console.error = originalError
             console.info = originalInfo
         }
-    }, [])
-    
+    }, [enabled])
+
     return messages
 }
 
@@ -127,7 +150,8 @@ const Button = ({ children, className = '', ...props }: ButtonHTMLAttributes<HTM
 
 export default function App() {
     const camera = useCamera()
-    const consoleMessages = useConsoleCapture()
+    const [showConsole, setShowConsole] = useState(false)
+    const consoleMessages = useConsoleCapture(showConsole)
     const [connected, setConnected] = useState(false)
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
     const [streaming, setStreaming] = useState(false)
@@ -150,12 +174,37 @@ export default function App() {
     const previousSettings = useRef<typeof settings>(null)
     const terminalRef = useRef<HTMLDivElement>(null)
 
+    // Timeline and recording state
+    const [isRecording, setIsRecording] = useState(false)
+    const [capturedFrames, setCapturedFrames] = useState<CapturedFrame[]>([])
+    const [isPlayingback, setIsPlayingback] = useState(false)
+    const [currentFrameIndex, setCurrentFrameIndex] = useState(0)
+    const [playbackSpeed, setPlaybackSpeed] = useState(1)
+    const [timelineZoom, setTimelineZoom] = useState(1) // Zoom level for timeline
+    const playbackAnimationFrameRef = useRef<number | null>(null)
+    const playbackFrameIndexRef = useRef(0)
+    const lastPlaybackTime = useRef(0)
+    const maxFrames = 300 // Limit to ~10 seconds at 30fps
+
     // Auto-scroll terminal to bottom when new messages arrive
     useEffect(() => {
         if (terminalRef.current) {
             terminalRef.current.scrollTop = terminalRef.current.scrollHeight
         }
     }, [consoleMessages])
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Clean up all captured frames
+            capturedFrames.forEach(frame => frame.imageBitmap.close())
+
+            // Cancel any running animation frames
+            if (playbackAnimationFrameRef.current) {
+                cancelAnimationFrame(playbackAnimationFrameRef.current)
+            }
+        }
+    }, [])
 
     useEffect(() => {
         const getCameraInfo = async () => {
@@ -266,6 +315,28 @@ export default function App() {
                     // Draw ImageBitmap directly to canvas
                     ctx.drawImage(imageBitmap, 0, 0)
 
+                    // Capture frame for timeline if recording
+                    if (isRecording) {
+                        const frameToStore = await createImageBitmap(blob)
+
+                        setCapturedFrames(prevFrames => {
+                            const newFrame: CapturedFrame = {
+                                imageBitmap: frameToStore,
+                                timestamp: performance.now(),
+                                settings: { ...newSettings },
+                            }
+
+                            // Circular buffer to prevent memory overflow
+                            const updatedFrames = [...prevFrames, newFrame]
+                            if (updatedFrames.length > maxFrames) {
+                                // Clean up old frame resources
+                                updatedFrames[0].imageBitmap.close()
+                                return updatedFrames.slice(1)
+                            }
+                            return updatedFrames
+                        })
+                    }
+
                     // Clean up ImageBitmap resources
                     imageBitmap.close()
 
@@ -345,20 +416,215 @@ export default function App() {
         startStreaming()
     }
 
+    // Timeline and playback functions
+    const onToggleRecording = () => {
+        setIsRecording(prev => !prev)
+        if (isRecording && capturedFrames.length > 0) {
+            console.log(`Recording stopped. Captured ${capturedFrames.length} frames.`)
+        }
+    }
+
+    const onTogglePlayback = () => {
+        if (capturedFrames.length === 0) {
+            console.log('No frames to playback')
+            return
+        }
+
+        if (isPlayingback) {
+            console.log('Stopping playback')
+            setIsPlayingback(false)
+            if (playbackAnimationFrameRef.current) {
+                cancelAnimationFrame(playbackAnimationFrameRef.current)
+                playbackAnimationFrameRef.current = null
+            }
+        } else {
+            console.log(`Starting playback with ${capturedFrames.length} frames`)
+            stopStreaming()
+            setIsPlayingback(true)
+            setCurrentFrameIndex(0)
+            playbackFrameIndexRef.current = 0
+            lastPlaybackTime.current = performance.now()
+        }
+    }
+
+    // Playback effect
+    useEffect(() => {
+        if (!isPlayingback || capturedFrames.length === 0) {
+            if (playbackAnimationFrameRef.current) {
+                cancelAnimationFrame(playbackAnimationFrameRef.current)
+                playbackAnimationFrameRef.current = null
+            }
+            return
+        }
+
+        console.log('Starting playback effect')
+
+        const playbackFrame = () => {
+            if (!isPlayingback) {
+                console.log('Playback stopped, exiting animation loop')
+                return
+            }
+
+            if (capturedFrames.length === 0) {
+                console.log('No frames available')
+                return
+            }
+
+            const canvas = canvasRef.current
+            const ctx = canvas?.getContext('2d')
+            if (!canvas || !ctx) {
+                console.log('Canvas not available')
+                return
+            }
+
+            const now = performance.now()
+            const deltaTime = now - lastPlaybackTime.current
+
+            // Control playback speed (assuming 30fps base rate)
+            const targetFrameTime = 1000 / 30 / playbackSpeed
+
+            if (deltaTime >= targetFrameTime) {
+                const frameIndex = playbackFrameIndexRef.current
+                const frame = capturedFrames[frameIndex]
+
+                if (frame) {
+                    console.log(`Playing frame ${frameIndex + 1}/${capturedFrames.length}`)
+                    canvas.width = frame.imageBitmap.width
+                    canvas.height = frame.imageBitmap.height
+                    ctx.drawImage(frame.imageBitmap, 0, 0)
+
+                    // Update settings display during playback
+                    setSettings(frame.settings)
+
+                    // Update UI state
+                    setCurrentFrameIndex(frameIndex)
+                }
+
+                // Advance frame index
+                playbackFrameIndexRef.current = (playbackFrameIndexRef.current + 1) % capturedFrames.length
+                lastPlaybackTime.current = now
+            }
+
+            playbackAnimationFrameRef.current = requestAnimationFrame(playbackFrame)
+        }
+
+        playbackFrame()
+
+        return () => {
+            console.log('Cleaning up playback effect')
+            if (playbackAnimationFrameRef.current) {
+                cancelAnimationFrame(playbackAnimationFrameRef.current)
+                playbackAnimationFrameRef.current = null
+            }
+        }
+    }, [isPlayingback, capturedFrames.length, playbackSpeed])
+
+    const onScrubTimeline = (frameIndex: number) => {
+        if (capturedFrames.length === 0) return
+
+        const clampedIndex = Math.max(0, Math.min(frameIndex, capturedFrames.length - 1))
+        setCurrentFrameIndex(clampedIndex)
+        playbackFrameIndexRef.current = clampedIndex
+
+        const canvas = canvasRef.current
+        const ctx = canvas?.getContext('2d')
+        if (!canvas || !ctx) return
+
+        const frame = capturedFrames[clampedIndex]
+        if (frame) {
+            canvas.width = frame.imageBitmap.width
+            canvas.height = frame.imageBitmap.height
+            ctx.drawImage(frame.imageBitmap, 0, 0)
+            setSettings(frame.settings)
+            console.log(`Scrubbed to frame ${clampedIndex + 1}/${capturedFrames.length}`)
+        }
+    }
+
+    const onClearTimeline = () => {
+        // Clean up ImageBitmap resources
+        capturedFrames.forEach(frame => frame.imageBitmap.close())
+        setCapturedFrames([])
+        setCurrentFrameIndex(0)
+        setIsPlayingback(false)
+        setIsRecording(false)
+
+        if (playbackAnimationFrameRef.current) {
+            cancelAnimationFrame(playbackAnimationFrameRef.current)
+            playbackAnimationFrameRef.current = null
+        }
+    }
+
+    // Convert frame to timecode format (hh:mm:ss:ff)
+    const formatTimecode = (frameIndex: number, fps: number = 30) => {
+        const totalSeconds = frameIndex / fps
+        const hours = Math.floor(totalSeconds / 3600)
+        const minutes = Math.floor((totalSeconds % 3600) / 60)
+        const seconds = Math.floor(totalSeconds % 60)
+        const frames = frameIndex % fps
+
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`
+    }
+
+    // Playhead dragging functionality
+    const onPlayheadMouseDown = (e: React.MouseEvent) => {
+        if (capturedFrames.length === 0) return
+
+        // Get the initial timeline container reference
+        const initialTimelineContainer = (e.target as HTMLElement).closest('.timeline-track-container')
+        if (!initialTimelineContainer) return
+
+        const initialRect = initialTimelineContainer.getBoundingClientRect()
+        const trackLabelWidth = 64 // w-16 in Tailwind = 64px
+        const borderWidth = 1 // border-r adds 1px
+        const totalOffset = trackLabelWidth + borderWidth
+        const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
+
+        const handleMouseMove = (e: MouseEvent) => {
+            // Use the initial container rect, ignore vertical movement
+            const relativeX = e.clientX - initialRect.left - totalOffset
+            const progress = Math.max(0, Math.min(1, relativeX / clipWidth))
+            const frameIndex = Math.min(Math.floor(progress * (capturedFrames.length - 1)), capturedFrames.length - 1)
+
+            onScrubTimeline(frameIndex)
+        }
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+        }
+
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+
+        // Prevent default to avoid text selection
+        e.preventDefault()
+    }
+
     return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
             <div className="flex flex-row items-center justify-center gap-4 flex-wrap">
                 <Button onClick={connected ? onDisconnect : onConnect}>{connected ? 'Disconnect' : 'Connect'}</Button>
+                <label className="flex items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        checked={showConsole}
+                        onChange={e => setShowConsole(e.target.checked)}
+                        className="w-4 h-4"
+                    />
+                    Display Console
+                </label>
             </div>
 
             {/* Always show live view frame */}
             <div className="relative flex justify-center">
                 <div className="relative border border-primary/10 rounded-md overflow-hidden bg-primary/5">
-                    {streaming ? (
+                    {streaming || isPlayingback || capturedFrames.length > 0 ? (
                         <canvas
                             ref={canvasRef}
                             className="max-w-[80vw] max-h-[60vh] block"
-                            style={{ display: streaming ? 'block' : 'none' }}
+                            style={{
+                                display: streaming || isPlayingback || capturedFrames.length > 0 ? 'block' : 'none',
+                            }}
                         />
                     ) : (
                         <div className="flex items-center justify-center max-w-[80vw] max-h-[60vh] w-[640px] h-[480px] text-center text-sm text-primary/30">
@@ -473,49 +739,208 @@ export default function App() {
                         </Button>
 
                         <Button
-                            // onClick={onRecord}
-                            disabled={true}
-                            className="w-8! h-8! bg-black/50! hover:bg-black/70! rounded-md flex items-center justify-center text-primary/30 transition-all"
+                            onClick={onToggleRecording}
+                            disabled={!connected}
+                            className={`w-8! h-8! rounded-md flex items-center justify-center text-primary/30 transition-all ${
+                                isRecording ? 'bg-red-600/70! hover:bg-red-600/90!' : 'bg-black/50! hover:bg-black/70!'
+                            }`}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
                                 width="24"
                                 height="24"
-                                fill="var(--color-red-400)"
+                                fill={isRecording ? '#fff' : 'var(--color-red-400)'}
                                 viewBox="0 0 256 256"
                             >
-                                <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm72-88a72,72,0,1,1-72-72A72.08,72.08,0,0,1,200,128Z"></path>
+                                {isRecording ? (
+                                    <path d="M200,32H56A24,24,0,0,0,32,56V200a24,24,0,0,0,24,24H200a24,24,0,0,0,24-24V56A24,24,0,0,0,200,32Z" />
+                                ) : (
+                                    <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm72-88a72,72,0,1,1-72-72A72.08,72.08,0,0,1,200,128Z"></path>
+                                )}
                             </svg>
                         </Button>
                     </div>
                 </div>
             </div>
-            
-            {/* Terminal-like console output */}
-            <div className="w-full max-w-[80vw] border border-primary/10 rounded-md bg-black/90 p-2">
-                <div 
-                    ref={terminalRef}
-                    className="h-48 overflow-y-auto font-mono text-xs text-green-400/80"
-                    style={{ scrollBehavior: 'smooth' }}
-                >
-                    {consoleMessages.map((msg, index) => (
-                        <div 
-                            key={`${msg.timestamp}-${index}`}
-                            className="whitespace-pre-wrap break-words mb-1"
+
+            {/* Video Editor Timeline */}
+            <div className="w-full max-w-[80vw] border border-primary/10 rounded-md bg-primary/10 overflow-hidden">
+                {/* Timeline Header */}
+                <div className="flex items-center justify-between px-3 py-1 border-b border-primary/10 bg-black/40">
+                    <div className="text-sm font-mono font-medium text-primary/70">
+                        {formatTimecode(currentFrameIndex)}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={onTogglePlayback}
+                            className="w-8! h-8! bg-black/50! hover:bg-black/70! rounded-md flex items-center justify-center text-primary/30 transition-all"
+                            disabled={capturedFrames.length === 0}
+                        >
+                            {isPlayingback ? (
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            )}
+                        </Button>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-primary/50">Zoom:</span>
+                            <input
+                                type="range"
+                                min={0.1}
+                                max={5}
+                                step={0.1}
+                                value={timelineZoom}
+                                onChange={e => setTimelineZoom(Number(e.target.value))}
+                                className="w-16 h-1"
+                            />
+                            <span className="text-xs text-primary/50 w-8">{timelineZoom.toFixed(1)}x</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Timeline Ruler */}
+                <div className="relative h-6 bg-black/40 border-b border-primary/10">
+                    {/* Left spacer to align with track content */}
+                    <div className="absolute left-0 top-0 w-16 h-full=border-r border-primary/10"></div>
+                    <div className="absolute left-16 top-0 right-0 flex items-center h-full text-xs text-primary/50">
+                        {Array.from({ length: Math.ceil(capturedFrames.length / 30) + 1 }, (_, i) => (
+                            <div
+                                key={i}
+                                className="flex-shrink-0 flex items-center"
+                                style={{ width: `${100 * timelineZoom}px` }}
+                            >
+                                <span className="text-xs">{i}s</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Timeline Track */}
+                <div className="relative h-20 bg-black/50 timeline-track-container">
+                    {/* Track Label */}
+                    <div className="absolute left-0 top-0 w-16 h-full bg-black/40 border-r border-primary/10 flex items-center justify-center">
+                        <span className="text-xs text-primary/50 writing-mode-vertical transform -rotate-90">
+                            Video 1
+                        </span>
+                    </div>
+
+                    {/* Clip Container */}
+                    <div
+                        className="absolute left-16 top-2 h-16 overflow-hidden"
+                        style={{
+                            width: `calc(100% - 64px)`,
+                            scrollBehavior: 'smooth',
+                        }}
+                    >
+                        {/* Video Clip */}
+                        <div
+                            className="relative bg-primary/5 rounded h-full border border-primary/10 overflow-hidden"
                             style={{
-                                color: msg.type === 'error' ? '#ef4444' :
-                                       msg.type === 'warn' ? '#f59e0b' :
-                                       msg.type === 'info' ? '#3b82f6' : '#4ade80cc'
+                                width: `${(capturedFrames.length / 30) * 100 * timelineZoom}px`,
+                                minWidth: '100px',
                             }}
                         >
-                            <span className="opacity-50">[{new Date(msg.timestamp).toLocaleTimeString()}]</span> {msg.message}
+                            {/* Clip Preview Frames */}
+                            {(() => {
+                                const clipWidth = (capturedFrames.length / 30) * 100 * timelineZoom
+                                const thumbnailWidth = 60 // Fixed width for thumbnails
+                                const numThumbnails = Math.ceil(clipWidth / thumbnailWidth) // Use ceil to fill entirely, overflow will be clipped
+
+                                return Array.from({ length: numThumbnails }, (_, i) => {
+                                    // Calculate which frame this thumbnail represents
+                                    const timePosition = (i * thumbnailWidth) / clipWidth
+                                    const frameIndex = Math.floor(timePosition * capturedFrames.length)
+                                    const frame = capturedFrames[frameIndex]
+
+                                    return (
+                                        <div
+                                            key={`preview-${i}`}
+                                            className="absolute top-0 border-r border-primary/20 overflow-hidden bg-black"
+                                            style={{
+                                                left: `${i * thumbnailWidth}px`,
+                                                width: `${thumbnailWidth}px`,
+                                                height: `calc(100% - 20px)`, // Leave space for label at bottom
+                                            }}
+                                        >
+                                            <canvas
+                                                width={frame?.imageBitmap.width || 1}
+                                                height={frame?.imageBitmap.height || 1}
+                                                className="w-full h-full object-cover"
+                                                ref={canvas => {
+                                                    if (canvas && frame) {
+                                                        const ctx = canvas.getContext('2d')
+                                                        if (ctx) {
+                                                            canvas.width = frame.imageBitmap.width
+                                                            canvas.height = frame.imageBitmap.height
+                                                            ctx.drawImage(frame.imageBitmap, 0, 0)
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    )
+                                })
+                            })()}
+
+                            {/* Clip Label */}
+                            <div className="absolute bottom-0 left-0 right-0 h-5 flex items-center justify-start pl-2 bg-primary/5 text-xs text-primary/90 font-medium">
+                                Recorded Clip
+                            </div>
                         </div>
-                    ))}
-                    {consoleMessages.length === 0 && (
-                        <div className="text-primary/30">Console output will appear here...</div>
-                    )}
+                    </div>
+
+                    {/* Vertical Playhead */}
+                    <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-primary/60 z-10 cursor-ew-resize"
+                        style={{
+                            left: `${64 + 1 + (currentFrameIndex / Math.max(1, capturedFrames.length - 1)) * ((capturedFrames.length / 30) * 100 * timelineZoom)}px`,
+                            boxShadow: '0 0 4px rgba(0, 0, 0, 0.3)',
+                        }}
+                        onMouseDown={onPlayheadMouseDown}
+                    >
+                        {/* Playhead Handle */}
+                        <div className="absolute -top-1 -left-2 w-4 h-4 bg-primary/80 rounded-full cursor-ew-resize border border-primary/40"></div>
+                    </div>
                 </div>
             </div>
+
+            {/* Terminal-like console output */}
+            {showConsole && (
+                <div className="w-full max-w-[80vw] border border-primary/10 rounded-md bg-black/90 p-2">
+                    <div
+                        ref={terminalRef}
+                        className="h-48 overflow-y-auto font-mono text-xs text-green-400/80"
+                        style={{ scrollBehavior: 'smooth' }}
+                    >
+                        {consoleMessages.map((msg, index) => (
+                            <div
+                                key={`${msg.timestamp}-${index}`}
+                                className="whitespace-pre-wrap break-words mb-1"
+                                style={{
+                                    color:
+                                        msg.type === 'error'
+                                            ? '#ef4444'
+                                            : msg.type === 'warn'
+                                              ? '#f59e0b'
+                                              : msg.type === 'info'
+                                                ? '#3b82f6'
+                                                : '#4ade80cc',
+                                }}
+                            >
+                                <span className="opacity-50">[{new Date(msg.timestamp).toLocaleTimeString()}]</span>{' '}
+                                {msg.message}
+                            </div>
+                        ))}
+                        {consoleMessages.length === 0 && (
+                            <div className="text-primary/30">Console output will appear here...</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
