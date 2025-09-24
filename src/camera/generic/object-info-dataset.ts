@@ -263,7 +263,7 @@ function getPTPStringLength(data: Uint8Array): number {
     const numChars = view.getUint8(0)
     // Each character is 2 bytes (UTF-16), plus 1 byte for the length byte
     // Make sure we don't read beyond available data
-    const expectedLength = 1 + (numChars * 2)
+    const expectedLength = 1 + numChars * 2
     if (expectedLength > data.length) {
         console.warn(`String length mismatch: expected ${expectedLength} bytes but only ${data.length} available`)
         return data.length

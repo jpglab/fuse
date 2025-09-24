@@ -1,4 +1,5 @@
 import { DeviceFinderInterface, DeviceSearchCriteria, DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { VendorIDs } from '@constants/vendors/vendor-ids'
 
 /**
  * USB device finder implementation
@@ -26,10 +27,18 @@ export class USBDeviceFinder implements DeviceFinderInterface {
         }
 
         const filters: USBDeviceFilter[] = []
-        if (criteria.vendorId !== undefined) {
+        
+        // If no specific vendor requested, show only supported vendors
+        if (criteria.vendorId === undefined || criteria.vendorId === 0) {
+            // Add filters for all supported vendors
+            Object.values(VendorIDs).forEach(vendorId => {
+                filters.push({ vendorId })
+            })
+        } else if (criteria.vendorId !== undefined) {
             filters.push({ vendorId: criteria.vendorId })
         }
-        if (criteria.productId !== undefined && criteria.vendorId !== undefined) {
+        
+        if (criteria.productId !== undefined && criteria.vendorId !== undefined && criteria.vendorId !== 0) {
             filters[0] = { ...filters[0], productId: criteria.productId }
         }
 

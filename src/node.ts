@@ -1,6 +1,6 @@
 /**
  * @jpglab/fuse - Node.js Entry Point
- * 
+ *
  * Full-featured entry point with USB device discovery and filesystem operations.
  */
 

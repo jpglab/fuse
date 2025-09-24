@@ -24,7 +24,9 @@ export async function listCameras(options?: CameraOptions): Promise<DeviceDescri
     } else if (isWebUSBAvailable) {
         // Browser with WebUSB support
         // TODO: Implement WebUSB discovery
-        throw new Error('WebUSB camera discovery not yet implemented. Please use the Camera constructor directly with a WebUSB device.')
+        throw new Error(
+            'WebUSB camera discovery not yet implemented. Please use the Camera constructor directly with a WebUSB device.'
+        )
     } else {
         // Browser without WebUSB support
         throw new Error('Camera discovery is not available in this browser. WebUSB API is required.')
@@ -38,7 +40,9 @@ export async function listCameras(options?: CameraOptions): Promise<DeviceDescri
  */
 export function watchCameras(callback: (cameras: DeviceDescriptor[]) => void, options?: CameraOptions): () => void {
     if (!isNode) {
-        throw new Error('watchCameras() is not available in browser environment. Use WebUSB events for camera monitoring.')
+        throw new Error(
+            'watchCameras() is not available in browser environment. Use WebUSB events for camera monitoring.'
+        )
     }
 
     const intervalMilliseconds = 1000
@@ -68,7 +72,7 @@ export function watchCameras(callback: (cameras: DeviceDescriptor[]) => void, op
 async function listCamerasNode(options?: CameraOptions): Promise<DeviceDescriptor[]> {
     const { USBDeviceFinder } = await import('@transport/usb/usb-device-finder')
     const { CameraFactory } = await import('@camera/camera-factory')
-    
+
     const deviceFinder = new USBDeviceFinder()
     const cameraFactory = new CameraFactory()
 
@@ -89,10 +93,13 @@ async function listCamerasNode(options?: CameraOptions): Promise<DeviceDescripto
             serialNumber: device.serialNumber,
             vendorId,
             productId,
-            usb: vendorId && productId ? {
-                vendorId,
-                productId,
-            } : undefined,
+            usb:
+                vendorId && productId
+                    ? {
+                          vendorId,
+                          productId,
+                      }
+                    : undefined,
         } as DeviceDescriptor
     })
 

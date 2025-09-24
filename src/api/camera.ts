@@ -77,11 +77,22 @@ export class Camera {
                 ...this.deviceDescriptor,
                 ...deviceInfo,
             }
+            // Update options with actual device info for proper vendor detection
+            if (deviceInfo.vendorId) {
+                this.options.usb = {
+                    ...this.options.usb,
+                    vendorId: deviceInfo.vendorId,
+                    productId: deviceInfo.productId || 0,
+                }
+            }
         }
 
         const detectedVendor =
             this.options.vendor ||
-            this.cameraFactory.detectVendor(this.options.usb?.vendorId || 0, this.options.usb?.productId || 0)
+            this.cameraFactory.detectVendor(
+                this.deviceDescriptor?.vendorId || this.options.usb?.vendorId || 0,
+                this.deviceDescriptor?.productId || this.options.usb?.productId || 0
+            )
 
         this.cameraImplementation = this.cameraFactory.create(detectedVendor, transport)
         await this.cameraImplementation.connect()
@@ -125,12 +136,12 @@ export class Camera {
     async getCameraInfo(): Promise<CameraInfo | null> {
         const info = await this.cameraImplementation?.getCameraInfo()
         if (!info) return null
-        
+
         // Override manufacturer with the detected vendor if we have one
         if (this.deviceDescriptor?.vendor) {
             return {
                 ...info,
-                manufacturer: this.deviceDescriptor.vendor
+                manufacturer: this.deviceDescriptor.vendor,
             }
         }
         return info

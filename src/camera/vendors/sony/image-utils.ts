@@ -8,10 +8,10 @@ import { extractJPEG } from '@core/images'
 
 // Sony-specific constants
 export const SONY_LIVEVIEW = {
-  HEADER_SIZE: 136,
-  DEFAULT_WIDTH: 640,
-  DEFAULT_HEIGHT: 480,
-  START_MARKER: [0xff, 0x01, 0x00, 0x00],
+    HEADER_SIZE: 136,
+    DEFAULT_WIDTH: 640,
+    DEFAULT_HEIGHT: 480,
+    START_MARKER: [0xff, 0x01, 0x00, 0x00],
 } as const
 
 /**
@@ -20,13 +20,13 @@ export const SONY_LIVEVIEW = {
  * @returns JPEG data or null if invalid
  */
 export function extractSonyLiveViewJPEG(data: Uint8Array): Uint8Array | null {
-  // Sony live view data has a fixed header
-  if (data.length < SONY_LIVEVIEW.HEADER_SIZE) {
-    return null
-  }
+    // Sony live view data has a fixed header
+    if (data.length < SONY_LIVEVIEW.HEADER_SIZE) {
+        return null
+    }
 
-  // Use generic JPEG extraction starting after the Sony header
-  return extractJPEG(data, SONY_LIVEVIEW.HEADER_SIZE)
+    // Use generic JPEG extraction starting after the Sony header
+    return extractJPEG(data, SONY_LIVEVIEW.HEADER_SIZE)
 }
 
 /**
@@ -35,10 +35,10 @@ export function extractSonyLiveViewJPEG(data: Uint8Array): Uint8Array | null {
  * @returns JPEG data or null if not found
  */
 export function extractSDIOStreamJPEG(data: Uint8Array): Uint8Array | null {
-  // Find the start marker
-  const startMarker = findByteSequence(data, SONY_LIVEVIEW.START_MARKER)
-  if (startMarker === -1) return null
+    // Find the start marker
+    const startMarker = findByteSequence(data, SONY_LIVEVIEW.START_MARKER)
+    if (startMarker === -1) return null
 
-  // Extract JPEG after the marker
-  return extractJPEG(data, startMarker)
+    // Extract JPEG after the marker
+    return extractJPEG(data, startMarker)
 }

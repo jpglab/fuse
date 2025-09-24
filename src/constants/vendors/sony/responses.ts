@@ -9,7 +9,7 @@ import { PTPResponses } from '@constants/ptp/responses'
  * Sony response codes - extending PTP
  */
 export const SonyResponses = {
-  ...PTPResponses,
+    ...PTPResponses,
 } as const satisfies ResponseDefinition
 
 export type SonyResponseDefinitions = typeof SonyResponses

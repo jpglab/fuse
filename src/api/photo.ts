@@ -18,7 +18,7 @@ export class Photo {
             // Node.js environment
             const { promises: fs } = await import('fs')
             const path = await import('path')
-            
+
             const dir = path.dirname(filePath)
             try {
                 await fs.access(dir)

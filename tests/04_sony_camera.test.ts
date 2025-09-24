@@ -133,11 +133,11 @@ describe('SonyCamera', () => {
 
     it('should capture a photo', async () => {
         const result = await camera.captureImage()
-        
+
         expect(result).toBeDefined()
         expect(result?.data).toBeInstanceOf(Uint8Array)
         expect(result?.info.filename).toBeDefined()
-        
+
         const photoPath = path.join(outputDir, result!.info.filename)
         fs.writeFileSync(photoPath, result!.data)
         console.log(`💾 PHOTO SAVED TO: ${photoPath}`)
@@ -145,10 +145,10 @@ describe('SonyCamera', () => {
 
     it('should capture a live view image', async () => {
         const result = await camera.captureLiveView()
-        
+
         expect(result).toBeDefined()
         expect(result?.data).toBeInstanceOf(Uint8Array)
-        
+
         const liveViewPath = path.join(outputDir, `liveview_${Date.now()}.jpg`)
         fs.writeFileSync(liveViewPath, result!.data)
         console.log(`💾 LIVE VIEW SAVED TO: ${liveViewPath}`)

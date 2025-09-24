@@ -32,10 +32,7 @@ export type {
     DeviceSearchCriteria,
     DeviceFinderInterface,
 } from '@transport/interfaces/device.interface'
-export type {
-    EndpointManagerInterface,
-    EndpointConfiguration,
-} from '@transport/interfaces/endpoint.interface'
+export type { EndpointManagerInterface, EndpointConfiguration } from '@transport/interfaces/endpoint.interface'
 export { EndpointType } from '@transport/interfaces/endpoint.interface'
 export { TransportType } from '@transport/interfaces/transport-types'
 export type { TransportOptions } from '@transport/interfaces/transport-types'

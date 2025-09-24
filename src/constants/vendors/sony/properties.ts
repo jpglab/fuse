@@ -25,11 +25,14 @@ export const SonyProperties = {
         },
         decode: (value: Uint8Array): string => {
             const hexValue = decodePTPValue(value, DataType.UINT16)
-            
-            return hexValue === 0xfffd ? 'Iris Close' :
-                   hexValue === 0xfffe ? '--' :
-                   hexValue === 0xffff ? 'nothing to display' :
-                   `f/${hexValue / 100}`
+
+            return hexValue === 0xfffd
+                ? 'Iris Close'
+                : hexValue === 0xfffe
+                  ? '--'
+                  : hexValue === 0xffff
+                    ? 'nothing to display'
+                    : `f/${hexValue / 100}`
         },
     },
 
@@ -47,15 +50,15 @@ export const SonyProperties = {
         decode: (value: Uint8Array): string => {
             const hexValue = decodePTPValue(value, DataType.UINT32)
             if (hexValue === 0x00000000) return 'BULB'
-            
+
             const numerator = (hexValue >> 16) & 0xffff
             const denominator = hexValue & 0xffff
-            
+
             // Handle fractions where numerator is 1
             if (numerator === 1) {
                 return `1/${denominator}`
             }
-            
+
             // Handle whole/decimal seconds (denominator is 10)
             if (denominator === 0x000a) {
                 const seconds = numerator / 10
@@ -66,7 +69,7 @@ export const SonyProperties = {
                 // Return decimal seconds with precision
                 return `${seconds}"`
             }
-            
+
             // Other fractions
             return `${numerator}/${denominator}`
         },
@@ -83,8 +86,11 @@ export const SonyProperties = {
             const v = String(value).toLowerCase()
             const isoValue = parseISO(value)
             if (isoValue === 0xffffff || v.includes('auto')) return encodePTPValue(0x00ffffff, DataType.UINT32)
-            const modePrefix = v.includes('multi frame nr high') ? 0x02000000
-                : v.includes('multi frame nr') ? 0x01000000 : 0x00000000
+            const modePrefix = v.includes('multi frame nr high')
+                ? 0x02000000
+                : v.includes('multi frame nr')
+                  ? 0x01000000
+                  : 0x00000000
             return encodePTPValue(modePrefix | isoValue, DataType.UINT32)
         },
         decode: (value: Uint8Array): string => {
@@ -294,7 +300,7 @@ export const SonyProperties = {
 
     STILL_IMAGE_SAVE_DESTINATION: {
         name: 'STILL_IMAGE_SAVE_DESTINATION',
-        code: 0xD222,
+        code: 0xd222,
         type: DataType.UINT8,
         description: 'Get the information of still image save destination.',
         writable: true,

@@ -138,14 +138,16 @@ export class USBTransport implements TransportInterface {
             throw new Error('Not connected')
         }
 
-        const endpointAddr = this.isWebEnvironment 
-            ? this.endpoints.bulkIn.endpointNumber 
+        const endpointAddr = this.isWebEnvironment
+            ? this.endpoints.bulkIn.endpointNumber
             : (this.endpoints.bulkIn as any).descriptor?.bEndpointAddress
-        console.log(`USB Transport: Receiving up to ${maxLength} bytes from endpoint 0x${endpointAddr?.toString(16) || '??'}`)
+        console.log(
+            `USB Transport: Receiving up to ${maxLength} bytes from endpoint 0x${endpointAddr?.toString(16) || '??'}`
+        )
 
         if (this.isWebEnvironment) {
             const transferSize = Math.min(maxLength, USB_LIMITS.MAX_WEBUSB_TRANSFER)
-            
+
             const result = await this.device.transferIn(this.endpoints.bulkIn.endpointNumber, transferSize)
             if (result.status !== 'ok') {
                 throw new Error(`Transfer failed: ${result.status}`)
@@ -234,10 +236,10 @@ export class USBTransport implements TransportInterface {
     private async sendNodeUSB(buffer: Buffer): Promise<void> {
         return new Promise((resolve, reject) => {
             console.log(`USB Transport: Calling transfer with ${buffer.length} bytes`)
-            
+
             this.endpoints.bulkOut.transfer(buffer, async (error: any) => {
                 console.log(`USB Transport: Transfer callback, error: ${error}`)
-                
+
                 if (!error) {
                     resolve()
                     return
@@ -271,11 +273,11 @@ export class USBTransport implements TransportInterface {
             }, USB_LIMITS.RECEIVE_TIMEOUT)
 
             console.log(`USB Transport: Calling transfer with maxLength ${maxLength}`)
-            
+
             this.endpoints.bulkIn.transfer(maxLength, async (error: any, data: Buffer) => {
                 clearTimeout(timeout)
                 console.log(`USB Transport: Receive callback, error: ${error}, data length: ${data?.length || 0}`)
-                
+
                 if (!error) {
                     console.log(`USB Transport: Successfully received ${data.length} bytes`)
                     resolve(toUint8Array(data))
@@ -303,10 +305,12 @@ export class USBTransport implements TransportInterface {
      * Check if error is a stall/pipe error
      */
     private isStallError(error: any): boolean {
-        return error.errno === -9 || 
-               error.errno === 4 || 
-               error.message?.includes('PIPE') || 
-               error.message?.includes('STALL')
+        return (
+            error.errno === -9 ||
+            error.errno === 4 ||
+            error.message?.includes('PIPE') ||
+            error.message?.includes('STALL')
+        )
     }
 
     /**

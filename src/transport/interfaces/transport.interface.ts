@@ -5,6 +5,8 @@
 import { DeviceDescriptor } from './device.interface'
 import { TransportType } from './transport-types'
 
+export { TransportType }
+
 /**
  * Transport layer interface for device communication
  */

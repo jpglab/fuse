@@ -53,8 +53,8 @@ describe('USB Transport', () => {
             console.log('----------------------------------------')
 
             devices.forEach((device, index) => {
-                const vendorHex = device.vendorId.toString(16).padStart(4, '0')
-                const productHex = device.productId.toString(16).padStart(4, '0')
+                const vendorHex = device.vendorId?.toString(16).padStart(4, '0') || 'N/A'
+                const productHex = device.productId?.toString(16).padStart(4, '0') || 'N/A'
 
                 console.log(`\nDevice #${index + 1}:`)
                 console.log(`  VID:PID: 0x${vendorHex}:0x${productHex} (${device.vendorId}:${device.productId})`)
@@ -73,7 +73,7 @@ describe('USB Transport', () => {
                         0x8087: 'Intel',
                         0x1235: 'Focusrite',
                     }
-                    if (knownVendors[device.vendorId]) {
+                    if (device.vendorId && knownVendors[device.vendorId]) {
                         console.log(`  Known Vendor: ${knownVendors[device.vendorId]}`)
                     }
 
@@ -107,8 +107,8 @@ describe('USB Transport', () => {
             if (VERBOSE && devices.length > 0) {
                 devices.forEach((device, index) => {
                     console.log(`\nSony Device #${index + 1}:`)
-                    console.log(`  Product ID: 0x${device.productId.toString(16).padStart(4, '0')}`)
-                    console.log(`  Decimal: ${device.productId}`)
+                    console.log(`  Product ID: 0x${device.productId?.toString(16).padStart(4, '0') || 'N/A'}`)
+                    console.log(`  Decimal: ${device.productId || 'N/A'}`)
 
                     // Known Sony camera product IDs
                     const knownSonyDevices: Record<number, string> = {
@@ -121,7 +121,7 @@ describe('USB Transport', () => {
                         0x0d55: 'Alpha a7 IV',
                     }
 
-                    if (knownSonyDevices[device.productId]) {
+                    if (device.productId && knownSonyDevices[device.productId]) {
                         console.log(`  Possible Model: ${knownSonyDevices[device.productId]}`)
                     }
                 })
@@ -154,8 +154,8 @@ describe('USB Transport', () => {
 
             if (camera) {
                 console.log('\nSony PTP Camera Details:')
-                console.log(`  Vendor ID: 0x${camera.vendorId.toString(16).padStart(4, '0')} (${camera.vendorId})`)
-                console.log(`  Product ID: 0x${camera.productId.toString(16).padStart(4, '0')} (${camera.productId})`)
+                console.log(`  Vendor ID: 0x${camera.vendorId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.vendorId || 'N/A'})`)
+                console.log(`  Product ID: 0x${camera.productId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.productId || 'N/A'})`)
                 console.log(`  Product Name: ${camera.model || 'Not available (need to open device)'}`)
                 console.log(`  Manufacturer: ${camera.manufacturer || 'Not available (need to open device)'}`)
                 console.log(`  Serial Number: ${camera.serialNumber || 'Not available (need to open device)'}`)
@@ -230,7 +230,7 @@ describe('USB Transport', () => {
 
                 console.log(`\nAttempting to connect to:`)
                 console.log(
-                    `  Device: 0x${device.vendorId.toString(16).padStart(4, '0')}:0x${device.productId.toString(16).padStart(4, '0')}`
+                    `  Device: 0x${device.vendorId?.toString(16).padStart(4, '0') || 'N/A'}:0x${device.productId?.toString(16).padStart(4, '0') || 'N/A'}`
                 )
 
                 // Try to connect to the device

@@ -1,6 +1,6 @@
 /**
  * @jpglab/fuse - Web/Browser Entry Point
- * 
+ *
  * This entry point excludes Node.js-specific features like USB device discovery
  * and filesystem operations. Use WebUSB API for camera connections.
  */

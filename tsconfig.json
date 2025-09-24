@@ -3,54 +3,24 @@
         "target": "ES2022",
         "module": "ESNext",
         "moduleResolution": "bundler",
-        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "lib": ["ES2022", "DOM"],
         "jsx": "react-jsx",
-
         "strict": true,
-        "noImplicitAny": true,
-        "strictNullChecks": true,
-        "strictFunctionTypes": true,
-        "strictBindCallApply": true,
-        "strictPropertyInitialization": true,
-        "noImplicitThis": true,
-        "alwaysStrict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "noFallthroughCasesInSwitch": true,
-        "noUncheckedIndexedAccess": true,
-
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
         "declaration": true,
-        "declarationMap": true,
-        "sourceMap": true,
         "outDir": "./dist",
-        "rootDir": "./",
-
+        "rootDir": ".",
         "baseUrl": ".",
         "paths": {
-            "@application/*": ["src/application/*"],
             "@camera/*": ["src/camera/*"],
-            "@camera": ["src/camera"],
-            "@api/*": ["src/api/*"],
-            "@api": ["src/api"],
-            "@constants/*": ["src/constants/*"],
-            "@constants": ["src/constants"],
             "@core/*": ["src/core/*"],
-            "@core": ["src/core"],
             "@transport/*": ["src/transport/*"],
-            "@transport": ["src/transport"],
-            "@factories/*": ["src/factories/*"],
-            "@factories": ["src/factories"],
-            "@types/*": ["src/types/*"]
+            "@constants/*": ["src/constants/*"],
+            "@api/*": ["src/api/*"],
+            "@factories/*": ["src/factories/*"]
         }
     },
-    "include": ["src/**/*", "tests/**/*", "examples/**/*", "*.config.ts"],
-    "exclude": ["node_modules", "dist"]
+    "include": ["src", "tests", "scripts", "examples", "*.config.ts"]
 }

@@ -84,7 +84,7 @@ describe('Client API', () => {
             await camera.connect()
 
             expect(camera.isConnected()).toBe(true)
-            
+
             const cameraInfo = await camera.getCameraInfo()
             expect(cameraInfo).toBeDefined()
             if (cameraInfo) {
@@ -107,18 +107,18 @@ describe('Client API', () => {
             const firstCamera = cameras[0]
             if (!firstCamera) return
             const firstVendor = firstCamera.vendor
-            
+
             // Test that we can connect with a vendor filter
             const camera = new Camera({ vendor: firstVendor?.toLowerCase() })
             await camera.connect()
 
             // Just verify that the camera connected successfully
             expect(camera.isConnected()).toBe(true)
-            
+
             // Get camera info to ensure it works
             const cameraInfo = await camera.getCameraInfo()
             expect(cameraInfo).toBeDefined()
-            
+
             // Note: manufacturer from camera info may differ from discovery vendor
             // (e.g., discovery returns 'sony' but GenericPTPCamera returns 'generic')
             // This is expected behavior
@@ -214,7 +214,7 @@ describe('Client API', () => {
                 const originalShutter = await camera.getDeviceProperty('SHUTTER_SPEED')
                 expect(originalShutter).toBeDefined()
 
-                await camera.setDeviceProperty('SHUTTER_SPEED', 1/250)
+                await camera.setDeviceProperty('SHUTTER_SPEED', 1 / 250)
                 const newShutter = await camera.getDeviceProperty('SHUTTER_SPEED')
                 expect(newShutter).toContain('250')
 
@@ -276,7 +276,6 @@ describe('Client API', () => {
                 expect(info.model).toBeDefined()
             }
         })
-
     })
 
     describe('Photo Class', () => {

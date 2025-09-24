@@ -34,19 +34,19 @@ export type LiveViewDataset = {
 
 export const parseLiveViewDataset = (data: Uint8Array): LiveViewDataset => {
     const view = createDataView(data)
-    
+
     // 1. Offset to Live View Image (UINT32)
     const offsetToLiveViewImage = view.getUint32(0, true)
-    
+
     // 2. Live View Image Size (UINT32)
     const liveViewImageSize = view.getUint32(4, true)
-    
+
     // 3. Offset to Focal Frame Info (UINT32)
     const offsetToFocalFrameInfo = view.getUint32(8, true)
-    
+
     // 4. Focal Frame Info Size (UINT32)
     const focalFrameInfoSize = view.getUint32(12, true)
-    
+
     // 5. Reserved (Variable size - from byte 16 to start of data)
     // Calculate the reserved section size
     const minOffset = Math.min(
@@ -55,22 +55,30 @@ export const parseLiveViewDataset = (data: Uint8Array): LiveViewDataset => {
     )
     const reservedSize = minOffset > 16 && minOffset !== Infinity ? minOffset - 16 : 0
     const reserved = reservedSize > 0 ? sliceBuffer(data, 16, 16 + reservedSize) : new Uint8Array()
-    
+
     // 6. Live View Image (JPEG data)
     let liveViewImage: Uint8Array | null = null
-    if (offsetToLiveViewImage > 0 && liveViewImageSize > 0 && data.length >= offsetToLiveViewImage + liveViewImageSize) {
+    if (
+        offsetToLiveViewImage > 0 &&
+        liveViewImageSize > 0 &&
+        data.length >= offsetToLiveViewImage + liveViewImageSize
+    ) {
         liveViewImage = sliceBuffer(data, offsetToLiveViewImage, offsetToLiveViewImage + liveViewImageSize)
     }
-    
+
     // 7. Focal Frame Info
     let focalFrameInfo: FocalFrameInfo | null = null
-    if (offsetToFocalFrameInfo > 0 && focalFrameInfoSize > 0 && data.length >= offsetToFocalFrameInfo + focalFrameInfoSize) {
+    if (
+        offsetToFocalFrameInfo > 0 &&
+        focalFrameInfoSize > 0 &&
+        data.length >= offsetToFocalFrameInfo + focalFrameInfoSize
+    ) {
         const focalFrameData = sliceBuffer(data, offsetToFocalFrameInfo, offsetToFocalFrameInfo + focalFrameInfoSize)
         focalFrameInfo = {
-            data: focalFrameData
+            data: focalFrameData,
         }
     }
-    
+
     return {
         offsetToLiveViewImage,
         liveViewImageSize,
@@ -78,6 +86,6 @@ export const parseLiveViewDataset = (data: Uint8Array): LiveViewDataset => {
         focalFrameInfoSize,
         reserved,
         liveViewImage,
-        focalFrameInfo
+        focalFrameInfo,
     }
 }

@@ -13,31 +13,31 @@ export interface DeviceDescriptor {
     vendorId?: number
     productId?: number
     serialNumber?: string
-    
+
     // Device metadata
     manufacturer?: string
-    model?: string          // Replaces 'product' for consistency
-    vendor?: string         // Alias for manufacturer (client compatibility)
-    
+    model?: string // Replaces 'product' for consistency
+    vendor?: string // Alias for manufacturer (client compatibility)
+
     // Connection details (supports multiple transports)
     usb?: {
         vendorId: number
         productId: number
-        path?: string       // USB device path
+        path?: string // USB device path
     }
     ip?: {
-        host: string        // IP address
-        port?: number       // Network port (defaults to standard PTP/IP port)
+        host: string // IP address
+        port?: number // Network port (defaults to standard PTP/IP port)
         protocol?: 'ptp/ip' | 'upnp'
     }
-    
+
     // Camera-specific information (populated after connection)
     firmwareVersion?: string
     batteryLevel?: number
-    
+
     // Transport type hint
     transportType?: TransportType
-    
+
     // Raw device object (platform-specific, e.g., USBDevice)
     device?: unknown
 }

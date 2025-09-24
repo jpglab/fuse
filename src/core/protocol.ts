@@ -153,9 +153,13 @@ export class PTPProtocol implements ProtocolInterface {
         if (opInfo?.description) {
             console.log(`  Description: ${opInfo.description}`)
         }
-        console.log(`  Data mode: ${operation.respondsWithData ? 'expects data from device' : operation.expectsData ? 'sends data to device' : 'no data phase'}`)
+        console.log(
+            `  Data mode: ${operation.respondsWithData ? 'expects data from device' : operation.expectsData ? 'sends data to device' : 'no data phase'}`
+        )
         if (operation.parameters && operation.parameters.length > 0) {
-            console.log(`  Parameters: [${operation.parameters.map(p => `0x${p.toString(16).padStart(8, '0')}`).join(', ')}]`)
+            console.log(
+                `  Parameters: [${operation.parameters.map(p => `0x${p.toString(16).padStart(8, '0')}`).join(', ')}]`
+            )
             if (opInfo && 'parameters' in opInfo && opInfo.parameters) {
                 operation.parameters.forEach((param, i) => {
                     const paramDef = opInfo.parameters[i]
@@ -195,8 +199,12 @@ export class PTPProtocol implements ProtocolInterface {
             const maxLength = operation.maxDataLength || PTP_LIMITS.DEFAULT_DATA_SIZE
             console.log(`Protocol: Waiting for data phase (max ${maxLength} bytes)...`)
             const dataResponse = await this.transport.receive(maxLength)
-            console.log(`Protocol: Received data packet (${dataResponse.length} bytes):`, 
-                Array.from(dataResponse.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '))
+            console.log(
+                `Protocol: Received data packet (${dataResponse.length} bytes):`,
+                Array.from(dataResponse.slice(0, 20))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join(' ')
+            )
             const parsedData = this.messageBuilder.parseData(dataResponse)
             receivedData = parsedData.payload
         }
@@ -204,10 +212,14 @@ export class PTPProtocol implements ProtocolInterface {
         // Receive response phase
         console.log(`Protocol: Waiting for response phase...`)
         const responseData = await this.transport.receive(PTP_LIMITS.DEFAULT_RECEIVE_SIZE)
-        console.log(`Protocol: Received response packet (${responseData.length} bytes):`, 
-            Array.from(responseData.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '))
+        console.log(
+            `Protocol: Received response packet (${responseData.length} bytes):`,
+            Array.from(responseData.slice(0, 20))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ')
+        )
         const parsedResponse = this.messageBuilder.parseResponse(responseData)
-        
+
         // Decode response code
         const respDef = Object.entries(PTPResponses).find(([_, resp]) => resp.code === parsedResponse.code)
         const respName = respDef ? respDef[0] : 'UNKNOWN'

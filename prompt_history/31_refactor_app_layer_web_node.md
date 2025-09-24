@@ -1,6 +1,7 @@
 We have just gone through this migration and I found a problem. We can't export everything to one single index file because it is intended to be used in different runtimes (node vs. web/browser).
 
 The issue I'm getting when I try to import this in a Next.js project is "Can't resolve fs":
+
 - We're using `fs` in `src/client/photo.ts`
 - We're using `USBDeviceFinder` in `src/client/discovery.ts` and `src/transport/transport-factory.ts`
 - `USBDeviceFinder` imports `usb` which is only available in Node
@@ -13,9 +14,9 @@ The issue I'm getting when I try to import this in a Next.js project is "Can't r
 We want to use Vite library mode and dynamic imports to build this library instead of tsup and webpack.
 
 - I already removed things from package.json.
-- Remember we need to have separate web and node entry points. 
+- Remember we need to have separate web and node entry points.
 - Here are the docs:
-https://vite.dev/guide/build.html#library-mode
+  https://vite.dev/guide/build.html#library-mode
 
 # Simplified Fuse API Proposal
 

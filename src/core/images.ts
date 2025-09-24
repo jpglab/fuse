@@ -7,10 +7,10 @@ import { findByteSequence, createDataView, sliceBuffer } from '@core/buffers'
 
 // JPEG markers
 export const JPEG_MARKERS = {
-  START: [0xff, 0xd8],
-  END: [0xff, 0xd9],
-  SOF0: [0xff, 0xc0], // Start of Frame
-  SOS: [0xff, 0xda],  // Start of Scan
+    START: [0xff, 0xd8],
+    END: [0xff, 0xd9],
+    SOF0: [0xff, 0xc0], // Start of Frame
+    SOS: [0xff, 0xda], // Start of Scan
 } as const
 
 /**
@@ -20,14 +20,14 @@ export const JPEG_MARKERS = {
  * @returns JPEG data or null if not found
  */
 export function extractJPEG(data: Uint8Array, startOffset = 0): Uint8Array | null {
-  const jpegStart = findByteSequence(data, JPEG_MARKERS.START, startOffset)
-  if (jpegStart === -1) return null
+    const jpegStart = findByteSequence(data, JPEG_MARKERS.START, startOffset)
+    if (jpegStart === -1) return null
 
-  const jpegEnd = findByteSequence(data, JPEG_MARKERS.END, jpegStart)
-  if (jpegEnd === -1) return null
+    const jpegEnd = findByteSequence(data, JPEG_MARKERS.END, jpegStart)
+    if (jpegEnd === -1) return null
 
-  // Include the end marker
-  return sliceBuffer(data, jpegStart, jpegEnd + 2)
+    // Include the end marker
+    return sliceBuffer(data, jpegStart, jpegEnd + 2)
 }
 
 /**
@@ -36,19 +36,19 @@ export function extractJPEG(data: Uint8Array, startOffset = 0): Uint8Array | nul
  * @returns Width and height or default values if not found
  */
 export function parseJPEGDimensions(jpegData: Uint8Array): { width: number; height: number } {
-  const sof0 = findByteSequence(jpegData, JPEG_MARKERS.SOF0)
-  
-  if (sof0 === -1 || jpegData.length < sof0 + 9) {
-    return {
-      width: 640,  // Default width
-      height: 480  // Default height
+    const sof0 = findByteSequence(jpegData, JPEG_MARKERS.SOF0)
+
+    if (sof0 === -1 || jpegData.length < sof0 + 9) {
+        return {
+            width: 640, // Default width
+            height: 480, // Default height
+        }
     }
-  }
 
-  const slicedData = sliceBuffer(jpegData, sof0, sof0 + 9)
-  const view = createDataView(slicedData)
-  const height = view.getUint16(5, false) // Big-endian in JPEG
-  const width = view.getUint16(7, false)  // Big-endian in JPEG
+    const slicedData = sliceBuffer(jpegData, sof0, sof0 + 9)
+    const view = createDataView(slicedData)
+    const height = view.getUint16(5, false) // Big-endian in JPEG
+    const width = view.getUint16(7, false) // Big-endian in JPEG
 
-  return { width, height }
+    return { width, height }
 }

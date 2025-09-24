@@ -7,12 +7,14 @@ We've gotten the script almost working (`audit-ptp-constants.ts`), however nothi
 ## **Prerequisites - MUST READ FIRST**
 
 You **MUST FULLY** read, understand, and adhere to the following before continuing:
+
 - This prompt in its entirety
 - The important notes section below
 - The goals and success criteria sections
 - `./AGENTS.md`
 
 Optional reference materials:
+
 - Review `prompt_history/` to understand previous work
 - Examine `docs/` folder for ISO and vendor implementation specs
 
@@ -29,25 +31,28 @@ Create a comprehensive audit script that extracts, validates, and documents all 
 ### **1. Hex Code Extraction**
 
 Extract ALL hex codes from source files in `src/constants/` matching these patterns:
+
 - `0x[0-9A-Fa-f]{2,4}` (e.g., `0x00`, `0x0000`, `0x5007`)
 - From: variable assignments, constants, enum values, and any other code structures
 - Output format: Structured JSON specification with:
-  ```json
-  {
-    "source_file": "path/to/file.js",
-    "hex_code": "0x5007",
-    "constant_name": "F_NUMBER",
-    "category": "property|operation|event|response|control",
-    "vendor": "iso|sony"
-  }
-  ```
+    ```json
+    {
+        "source_file": "path/to/file.js",
+        "hex_code": "0x5007",
+        "constant_name": "F_NUMBER",
+        "category": "property|operation|event|response|control",
+        "vendor": "iso|sony"
+    }
+    ```
 
 ### **2. Documentation Search & Extraction**
 
 For each extracted hex code, perform targeted document searches:
 
 #### **ISO Documentation** (`docs/iso/ptp_iso_15740_reference`)
+
 Search for blocks matching this structure:
+
 ```markdown
 ### **13.5.7 F-Number**
 
@@ -63,17 +68,20 @@ Description: this property corresponds to the aperture...
 ```
 
 **Required validation criteria:**
+
 - Contains the target hex code
 - Contains appropriate field type:
-  - **Properties**: `DevicePropCode`, `Data type`, `Description`
-  - **Operations**: `OperationCode`, `Parameter1`, `Description`
-  - **Responses**: `ResponseCode`, `Description`
-  - **Events**: `EventCode`, `Parameter1`, `Description`
+    - **Properties**: `DevicePropCode`, `Data type`, `Description`
+    - **Operations**: `OperationCode`, `Parameter1`, `Description`
+    - **Responses**: `ResponseCode`, `Description`
+    - **Events**: `EventCode`, `Parameter1`, `Description`
 - Section numbers (e.g., `10.5.1`) mark good boundaries
 - Table references (e.g., `**Table 22**`) mark good end boundaries
 
 #### **Sony Documentation** (`docs/manufacturers/sony/ptp_sony_reference`)
+
 Search for blocks matching this structure:
+
 ```markdown
 # White Balance
 
@@ -83,19 +91,20 @@ Get/Set the white balance.
 
 # **Description**
 
-| Field        | Field Order | Size (Bytes) | Datatype | Value             |
-|--------------|-------------|--------------|----------|-------------------|
-| PropertyCode | 1           | 2            | UINT16   | 0x5005            |
+| Field        | Field Order | Size (Bytes) | Datatype | Value  |
+| ------------ | ----------- | ------------ | -------- | ------ |
+| PropertyCode | 1           | 2            | UINT16   | 0x5005 |
 ```
 
 **Required validation criteria:**
+
 - Contains the target hex code
 - Contains `Summary` and `Description` sections
 - Contains appropriate field type:
-  - **Properties**: `PropertyCode`
-  - **Operations**: `Operation Code` (may include parameters)
-  - **Events**: `Event Code`
-  - **Controls**: `ControlCode`
+    - **Properties**: `PropertyCode`
+    - **Operations**: `Operation Code` (may include parameters)
+    - **Events**: `Event Code`
+    - **Controls**: `ControlCode`
 
 ### **3. Fuzzy Matching Algorithm**
 
@@ -103,13 +112,13 @@ When multiple potential blocks are found for a hex code:
 
 1. **Extract heading text** immediately preceding each candidate block
 2. **Normalize both strings**:
-   - Remove special characters (`-`, `_`, numbers, punctuation)
-   - Convert to lowercase
-   - Remove common words (`get`, `set`, `the`, `a`, `an`)
+    - Remove special characters (`-`, `_`, numbers, punctuation)
+    - Convert to lowercase
+    - Remove common words (`get`, `set`, `the`, `a`, `an`)
 3. **Apply fuzzy matching**:
-   - Use substring matching or Levenshtein distance
-   - Minimum 60% similarity threshold
-   - Prioritize exact substring matches
+    - Use substring matching or Levenshtein distance
+    - Minimum 60% similarity threshold
+    - Prioritize exact substring matches
 4. **Validate content** using the criteria above
 5. **Select best match** based on combined fuzzy score + validation score
 
@@ -120,27 +129,31 @@ Once the correct block is identified:
 1. **Find start boundary**: Previous main heading (any level: `#`, `##`, `###`, or `**Bold**`)
 2. **Find end boundary**: Next main heading or table reference
 3. **Handle edge cases**:
-   - Multi-page tables (look for repeated column headers)
-   - Nested sections (prefer higher-level headings as boundaries)
-   - Inconsistent formatting (treat bold text as potential headings)
+    - Multi-page tables (look for repeated column headers)
+    - Nested sections (prefer higher-level headings as boundaries)
+    - Inconsistent formatting (treat bold text as potential headings)
 4. **Extract complete section** from start to end boundary
 
 ### **5. Output Structure**
 
 Create organized documentation in:
+
 - `docs/audit/iso/0x<HEX_CODE>_<NAME>.md`
 - `docs/audit/sony/0x<HEX_CODE>_<NAME>.md`
 
 ## **Validation & Quality Assurance**
 
 ### **Content Validation**
+
 - Verify extracted blocks contain the target hex code
 - Confirm required fields are present for each category
 - Check minimum content length (>100 characters)
 - Validate proper markdown structure
 
 ### **Coverage Analysis**
+
 Output detailed coverage report:
+
 ```
 PTP Constants Coverage Report
 =============================
@@ -161,11 +174,12 @@ Missing Codes:
 ### **Error Handling**
 
 If coverage is below 80%:
+
 1. **Manual investigation required**: Examine 2-3 missing codes manually
 2. **Update parser logic**: Make parsing more permissive for:
-   - Additional heading variations
-   - Special characters in names
-   - Alternative document structures
+    - Additional heading variations
+    - Special characters in names
+    - Alternative document structures
 3. **Iterative improvement**: Re-run with updated logic
 
 ## **Success Criteria**
@@ -190,6 +204,7 @@ If coverage is below 80%:
 ## **Troubleshooting**
 
 If you encounter low coverage rates:
+
 1. Manually search docs for 1-2 missing hex codes
 2. Analyze why the parser missed them
 3. Update fuzzy matching thresholds or boundary detection

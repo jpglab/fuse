@@ -7,14 +7,17 @@ import { decodePTPValue, encodePTPValue } from '@core/buffers'
 
 // Helper functions for parsing various input formats
 export const parseAperture = (v: string | number): number => {
-    const s = String(v).toLowerCase()
-        .replace(/[fƒ]/g, '')  // Remove f or fancy ƒ
+    const s = String(v)
+        .toLowerCase()
+        .replace(/[fƒ]/g, '') // Remove f or fancy ƒ
         .replace(/[\/:\s]/g, '') // Remove /, :, spaces
     return parseFloat(s) || 0
 }
 
 export const parseISO = (v: string | number): number => {
-    const s = String(v).toLowerCase().replace(/iso\s*/g, '')
+    const s = String(v)
+        .toLowerCase()
+        .replace(/iso\s*/g, '')
     if (s === 'auto') return 0xffffff // Special auto value
     return parseInt(s) || 0
 }
@@ -22,10 +25,10 @@ export const parseISO = (v: string | number): number => {
 export const parseShutter = (v: string): [number, number] => {
     let s = String(v).toLowerCase().trim()
     if (s === 'bulb' || s === 'b') return [0, 0]
-    
+
     // Remove quotes and time suffixes
     s = s.replace(/["'`]/g, '').replace(/\s*(sec(onds?)?|s)\s*$/g, '')
-    
+
     // Handle fractions like 1/250 or 1/8000
     if (s.includes('/')) {
         const parts = s.split('/')
@@ -33,15 +36,15 @@ export const parseShutter = (v: string): [number, number] => {
         const d = parseInt(parts[1] || '1') || 1
         return [n, d]
     }
-    
+
     // Parse as decimal
     const num = parseFloat(s)
     if (isNaN(num)) return [1, 1]
-    
+
     // Sony camera uses:
     // - Decimal notation (with denominator 10) for speeds >= 0.4" (30", 15", 8", 4", 2", 1", 0.8", 0.6", 0.4")
     // - Fraction notation for speeds < 0.4" (1/3, 1/4, 1/8, 1/15, etc.)
-    
+
     if (num >= 0.4) {
         // Use decimal notation with denominator 10
         return [Math.round(num * 10), 10]
@@ -84,11 +87,11 @@ export const PTPProperties = {
         },
         decode: (value: HexCode | Uint8Array) => {
             const seconds = decodePTPValue(value as Uint8Array, DataType.UINT32) / 10000
-            
+
             // Handle special cases
             if (seconds === 0) return 'bulb'
             if (seconds >= 1) return `${seconds}"`
-            
+
             // Convert to fraction for fast shutter speeds
             const denominator = Math.round(1 / seconds)
             return `1/${denominator}`
