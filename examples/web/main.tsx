@@ -41,6 +41,8 @@ export default function App() {
     const camera = useCamera()
     const [connected, setConnected] = useState(false)
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
+    const [streaming, setStreaming] = useState(false)
+    const [liveViewUrl, setLiveViewUrl] = useState<string | null>(null)
 
     useEffect(() => {
         const getCameraInfo = async () => {
@@ -56,6 +58,10 @@ export default function App() {
     }
 
     const onDisconnect = async () => {
+        // Stop streaming and cleanup
+        if (streaming) {
+            onStopStreaming()
+        }
         await camera?.disconnect()
         setConnected(false)
     }
@@ -76,16 +82,88 @@ export default function App() {
         }
     }
 
+    useEffect(() => {
+        let streamingRef = streaming
+        let timeoutId: NodeJS.Timeout | null = null
+
+        const streamFrame = async () => {
+            if (!streamingRef || !camera) return
+
+            try {
+                const result = await camera.captureLiveView()
+                if (result?.data && streamingRef) {
+                    // Clean up previous URL
+                    if (liveViewUrl) {
+                        URL.revokeObjectURL(liveViewUrl)
+                    }
+                    
+                    const blob = new Blob([new Uint8Array(result.data)], { type: 'image/jpeg' })
+                    const url = URL.createObjectURL(blob)
+                    setLiveViewUrl(url)
+                }
+            } catch (error) {
+                console.error('Error capturing live view:', error)
+            }
+
+            // Schedule next frame if still streaming
+            if (streamingRef) {
+                timeoutId = setTimeout(streamFrame, 34)
+            }
+        }
+
+        if (streaming && connected) {
+            streamFrame()
+        }
+
+        return () => {
+            streamingRef = false
+            if (timeoutId) {
+                clearTimeout(timeoutId)
+            }
+            if (liveViewUrl) {
+                URL.revokeObjectURL(liveViewUrl)
+            }
+        }
+    }, [streaming, connected, camera, liveViewUrl])
+
+    const onStartStreaming = () => {
+        setStreaming(true)
+    }
+
+    const onStopStreaming = () => {
+        setStreaming(false)
+        if (liveViewUrl) {
+            URL.revokeObjectURL(liveViewUrl)
+            setLiveViewUrl(null)
+        }
+    }
+
     return (
-        <div className="flex flex-col items-center justify-center h-screen gap-6">
-            <div className="flex flex-row items-center justify-center gap-4">
-                <Button onClick={connected ? onDisconnect : onConnect} disabled={connected}>
+        <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-4">
+            <div className="flex flex-row items-center justify-center gap-4 flex-wrap">
+                <Button onClick={connected ? onDisconnect : onConnect}>
                     {connected ? 'Disconnect' : 'Connect'}
                 </Button>
-                {connected && <Button onClick={onCaptureImage}>Capture Image</Button>}
-                {connected && <Button onClick={onCaptureLiveView}>Capture Live View</Button>}
+                {connected && <Button onClick={onCaptureImage}>Capture Image (Download)</Button>}
+                {connected && <Button onClick={onCaptureLiveView}>Capture Live View (Download)</Button>}
+                {connected && !streaming && <Button onClick={onStartStreaming}>Start Live View Stream</Button>}
+                {connected && streaming && <Button onClick={onStopStreaming}>Stop Live View Stream</Button>}
             </div>
-            {connected ? `${cameraInfo?.manufacturer} Connected` : 'Disconnected'}
+            
+            <div className="text-center">
+                {connected ? `${cameraInfo?.manufacturer} Connected` : 'Disconnected'}
+                {streaming && <div className="text-sm text-gray-600 mt-1">Live streaming...</div>}
+            </div>
+
+            {liveViewUrl && (
+                <div className="flex justify-center">
+                    <img 
+                        src={liveViewUrl} 
+                        alt="Live View" 
+                        className="max-w-[80vw] max-h-[60vh] rounded-lg shadow-lg"
+                    />
+                </div>
+            )}
         </div>
     )
 }
