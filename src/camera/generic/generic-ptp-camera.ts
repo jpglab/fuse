@@ -144,4 +144,14 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
         // TODO
         return null
     }
+
+    async streamLiveView(): Promise<Uint8Array> {
+        // Default implementation - vendor cameras should override
+        return new Uint8Array()
+    }
+
+    async streamOSD(): Promise<Uint8Array> {
+        // Default implementation - vendor cameras should override
+        return new Uint8Array()
+    }
 }

@@ -50,6 +50,11 @@ const useConsoleCapture = () => {
                 return String(arg)
             }).join(' ')
             
+            // Filter out repetitive USB Transport messages to reduce console spam
+            if (message.includes('USB Transport:') || message.includes('Sending') || message.includes('Receiving')) {
+                return // Skip logging these messages
+            }
+            
             setMessages(prev => {
                 // If we're at 10 messages, remove the oldest one before adding new
                 const newMessages = prev.length >= 10 ? prev.slice(1) : prev
@@ -131,15 +136,22 @@ export default function App() {
     const [connected, setConnected] = useState(false)
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
     const [streaming, setStreaming] = useState(false)
+    const [streamOSD, setStreamOSD] = useState(false)
     const [fps, setFps] = useState(0)
     const [resolution, setResolution] = useState<{
         source: { width: number; height: number }
     } | null>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const streamingRef = useRef(false)
+    const streamOSDRef = useRef(false)
     const animationFrameRef = useRef<number | null>(null)
     const frameTimestamps = useRef<number[]>([])
     const lastFpsUpdate = useRef(0)
+    const lastOSDImage = useRef<ImageBitmap | null>(null)
+    const lastOSDFetch = useRef(0)
+    const osdFailureCount = useRef(0)
+    const OSD_FETCH_INTERVAL = 5000 // Fetch OSD every 5 seconds to be extra safe
+    const MAX_OSD_FAILURES = 3 // Disable OSD after 3 consecutive failures
     const [settings, setSettings] = useState<{
         aperture: string
         shutterSpeed: string
@@ -212,6 +224,7 @@ export default function App() {
         if (!ctx) return
 
         streamingRef.current = streaming
+        streamOSDRef.current = streamOSD
 
         const streamFrame = async () => {
             if (!streamingRef.current || !camera || !connected) return
@@ -263,11 +276,71 @@ export default function App() {
                         source: { width: imageBitmap.width, height: imageBitmap.height },
                     })
 
-                    // Draw ImageBitmap directly to canvas
+                    // Draw live view image to canvas
                     ctx.drawImage(imageBitmap, 0, 0)
 
-                    // Clean up ImageBitmap resources
+                    // Clean up live view ImageBitmap resources
                     imageBitmap.close()
+
+                    // If OSD is enabled and not permanently failed, overlay it on top
+                    if (streamOSDRef.current && osdFailureCount.current < MAX_OSD_FAILURES) {
+                        const currentTime = performance.now()
+                        
+                        // Fetch new OSD image only if enough time has passed
+                        if (currentTime - lastOSDFetch.current > OSD_FETCH_INTERVAL) {
+                            try {
+                                const osdResult = await camera.streamOSD()
+                                if (osdResult && osdResult.length > 0) {
+                                    // Success - reset failure count
+                                    osdFailureCount.current = 0
+                                    
+                                    // Clean up previous OSD image
+                                    if (lastOSDImage.current) {
+                                        lastOSDImage.current.close()
+                                    }
+                                    
+                                    // Decode PNG binary data directly to ImageBitmap
+                                    const osdBlob = new Blob([new Uint8Array(osdResult)], { type: 'image/png' })
+                                    const osdBitmap = await createImageBitmap(osdBlob)
+                                    
+                                    // Cache the OSD image
+                                    lastOSDImage.current = osdBitmap
+                                    lastOSDFetch.current = currentTime
+                                } else {
+                                    // OSD returned empty (disabled in camera implementation)
+                                    osdFailureCount.current++
+                                    lastOSDFetch.current = currentTime
+                                }
+                            } catch (osdError) {
+                                console.error('Error fetching OSD:', osdError)
+                                osdFailureCount.current++
+                                lastOSDFetch.current = currentTime // Update to avoid rapid retries
+                                
+                                if (osdFailureCount.current >= MAX_OSD_FAILURES) {
+                                    console.error(`OSD disabled after ${MAX_OSD_FAILURES} failures`)
+                                    setStreamOSD(false) // Turn off OSD toggle
+                                }
+                            }
+                        }
+                        
+                        // Draw cached OSD image if available
+                        if (lastOSDImage.current) {
+                            try {
+                                // Draw OSD on top, scaled to full canvas width
+                                ctx.drawImage(lastOSDImage.current, 0, 0, canvas.width, canvas.height)
+                            } catch (drawError) {
+                                console.error('Error drawing OSD:', drawError)
+                                // Clear invalid cached image
+                                lastOSDImage.current = null
+                            }
+                        }
+                    } else {
+                        // Clean up OSD image when disabled
+                        if (lastOSDImage.current) {
+                            lastOSDImage.current.close()
+                            lastOSDImage.current = null
+                        }
+                    }
 
                     // Calculate FPS
                     const now = performance.now()
@@ -313,8 +386,13 @@ export default function App() {
                 cancelAnimationFrame(animationFrameRef.current)
                 animationFrameRef.current = null
             }
+            // Clean up cached OSD image
+            if (lastOSDImage.current) {
+                lastOSDImage.current.close()
+                lastOSDImage.current = null
+            }
         }
-    }, [streaming, connected, camera])
+    }, [streaming, streamOSD, connected, camera])
 
     const startStreaming = () => {
         setStreaming(true)
@@ -351,7 +429,7 @@ export default function App() {
                 <Button onClick={connected ? onDisconnect : onConnect}>{connected ? 'Disconnect' : 'Connect'}</Button>
             </div>
 
-            {/* Always show live view frame */}
+            {/* Live view frame */}
             <div className="relative flex justify-center">
                 <div className="relative border border-primary/10 rounded-md overflow-hidden bg-primary/5">
                     {streaming ? (
@@ -396,6 +474,13 @@ export default function App() {
                                     : 'LQ'
                                 : '--'}
                         </div>
+                        
+                        {/* OSD indicator */}
+                        {streamOSD && (
+                            <div className="px-2 py-1 bg-black/70 rounded text-xs font-mono text-yellow-400/80">
+                                OSD
+                            </div>
+                        )}
                     </div>
 
                     {/* Exposure settings in top right */}
@@ -440,6 +525,34 @@ export default function App() {
                     </div>
 
                     <div className="absolute bottom-2 right-2 flex flex-row gap-2">
+                        {/* OSD Toggle button */}
+                        <button
+                            onClick={() => {
+                                setStreamOSD(!streamOSD)
+                                // Reset failure count when enabling OSD
+                                if (!streamOSD) {
+                                    osdFailureCount.current = 0
+                                }
+                            }}
+                            className="w-8 h-8 bg-black/50 hover:bg-black/70 rounded-md flex items-center justify-center text-primary/30 transition-all"
+                            disabled={!connected || !streaming}
+                            title={streamOSD ? "Hide OSD overlay" : "Show OSD overlay"}
+                        >
+                            <svg 
+                                className="w-4 h-4" 
+                                fill="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                {streamOSD ? (
+                                    // Layers icon when OSD is on
+                                    <path d="M12 16L19.36 10.27L21 9L12 2L3 9L4.63 10.27M12 18.54L4.62 12.81L3 14.07L12 21.07L21 14.07L19.37 12.8L12 18.54Z" />
+                                ) : (
+                                    // Single layer icon when OSD is off
+                                    <path d="M12 2L3 9L12 16L21 9L12 2M12 4.53L18.74 9L12 13.47L5.26 9L12 4.53Z" />
+                                )}
+                            </svg>
+                        </button>
+
                         <Button
                             onClick={onCaptureImage}
                             disabled={!connected}

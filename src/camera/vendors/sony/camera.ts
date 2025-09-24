@@ -8,6 +8,7 @@ import { PTPResponses } from '@constants/ptp/responses'
 import { encodePTPValue } from '@core/buffers'
 import { parseSDIExtDevicePropInfo } from '@camera/vendors/sony/sdi-ext-device-prop-info-dataset'
 import { parseLiveViewDataset } from '@camera/vendors/sony/sony-live-view-dataset'
+import { parseOSDImageDataset } from '@camera/vendors/sony/sony-osd-image-dataset'
 import { ObjectInfoParsed, parseObjectInfo } from '@camera/generic/object-info-dataset'
 
 const SONY_CAPTURED_IMAGE_OBJECT_HANDLE = 0xffffc001
@@ -15,6 +16,7 @@ const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
 
 export class SonyCamera extends GenericPTPCamera {
     private liveViewEnabled = false
+    private OSDImageModeEnabled = false
 
     constructor(
         protocol: ProtocolInterface,
@@ -48,6 +50,15 @@ export class SonyCamera extends GenericPTPCamera {
     }
 
     async disconnect(): Promise<void> {
+        // Disable OSD mode if it was enabled
+        if (this.OSDImageModeEnabled) {
+            try {
+                await this.setDeviceProperty('OSD_IMAGE_MODE', 'OFF')
+                this.OSDImageModeEnabled = false
+            } catch (error) {
+                console.warn('Failed to disable OSD mode on disconnect:', error)
+            }
+        }
         await super.disconnect()
     }
 
@@ -236,12 +247,52 @@ export class SonyCamera extends GenericPTPCamera {
         const response = await this.protocol.sendOperation({
             ...SonyOperations.GET_OBJECT,
             parameters: [SONY_LIVE_VIEW_OBJECT_HANDLE],
-            maxDataLength: 256 * 1024 // 256KB
+            maxDataLength: 256 * 1024, // 256KB
         })
 
         // Parse Sony's live view format
         const liveViewData = parseLiveViewDataset(response.data!)
 
         return liveViewData.liveViewImage || new Uint8Array()
+    }
+
+    async streamOSD(): Promise<Uint8Array> {
+        // COMPLETELY DISABLED - The OSD operation is causing camera crashes
+        // Return empty array to prevent any camera communication
+        console.warn('[SonyCamera] OSD is disabled due to camera stability issues')
+        return new Uint8Array()
+        
+        /*
+        // Original implementation - disabled to prevent crashes
+        console.log('[SonyCamera] streamOSD called')
+        
+        // OSD requires live view to be enabled
+        if (!this.liveViewEnabled) {
+            console.log('[SonyCamera] Enabling live view for OSD')
+            await this.setDeviceProperty('SET_LIVE_VIEW_ENABLE', 'ENABLE')
+            this.liveViewEnabled = true
+        }
+
+        console.log('[SonyCamera] Fetching OSD image data')
+        try {
+            const response = await this.protocol.sendOperation({
+                ...SonyOperations.SDIO_GET_OSD_IMAGE,
+                maxDataLength: 256 * 1024, // 256KB
+            })
+
+            console.log('[SonyCamera] OSD response received, data length:', response.data?.length || 0)
+            
+            // Parse Sony's OSD image format
+            if (response.data && response.data.length > 0) {
+                const osdData = parseOSDImageDataset(response.data)
+                console.log('[SonyCamera] OSD parsed, image size:', osdData.osdImage?.length || 0)
+                return osdData.osdImage || new Uint8Array()
+            }
+        } catch (error) {
+            console.error('[SonyCamera] Failed to get OSD image:', error)
+        }
+        
+        return new Uint8Array()
+        */
     }
 }

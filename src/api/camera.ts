@@ -159,6 +159,10 @@ export class Camera {
         return this.cameraImplementation?.streamLiveView() || new Uint8Array()
     }
 
+    async streamOSD(): Promise<Uint8Array> {
+        return this.cameraImplementation?.streamOSD() || new Uint8Array()
+    }
+
     async getDeviceProperty<T = any>(propertyName: string): Promise<T> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         return this.cameraImplementation.getDeviceProperty(propertyName)

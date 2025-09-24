@@ -74,6 +74,11 @@ export interface CameraInterface {
      * Stream a live view frame
      */
     streamLiveView(): Promise<Uint8Array>
+
+    /**
+     * Stream an OSD (On-Screen Display) frame
+     */
+    streamOSD(): Promise<Uint8Array>
 }
 
 /**
