@@ -17,10 +17,34 @@ const downloadFile = (data: Uint8Array, filename: string, mimeType: string = 'ap
 
 const useCamera = () => {
     const [camera, setCamera] = useState<Camera | null>(null)
+    const cameraRef = useRef<Camera | null>(null)
 
     useEffect(() => {
         const camera = new Camera()
         setCamera(camera)
+        cameraRef.current = camera
+
+        // Handle page refresh/navigation
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (cameraRef.current?.isConnected()) {
+                // Try to disconnect synchronously
+                cameraRef.current.disconnect().catch(err => {
+                    console.error('Error disconnecting camera during beforeunload:', err)
+                })
+            }
+        }
+
+        window.addEventListener('beforeunload', handleBeforeUnload)
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+            
+            if (camera.isConnected()) {
+                camera.disconnect().catch(err => {
+                    console.error('Error disconnecting camera during cleanup:', err)
+                })
+            }
+        }
     }, [])
 
     return camera
