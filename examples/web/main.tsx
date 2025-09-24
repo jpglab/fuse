@@ -3,7 +3,7 @@ import './globals.css'
 import React from 'react'
 import * as ReactDOM from 'react-dom/client'
 import { Camera } from '@api/camera'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { CameraInfo } from '@camera/interfaces/camera.interface'
 import type { ButtonHTMLAttributes, DetailedHTMLProps } from 'react'
 
@@ -42,7 +42,12 @@ export default function App() {
     const [connected, setConnected] = useState(false)
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | null>(null)
     const [streaming, setStreaming] = useState(false)
-    const [liveViewUrl, setLiveViewUrl] = useState<string | null>(null)
+    const [fps, setFps] = useState(0)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamingRef = useRef(false)
+    const animationFrameRef = useRef<number | null>(null)
+    const frameTimestamps = useRef<number[]>([])
+    const lastFpsUpdate = useRef(0)
 
     useEffect(() => {
         const getCameraInfo = async () => {
@@ -60,7 +65,7 @@ export default function App() {
     const onDisconnect = async () => {
         // Stop streaming and cleanup
         if (streaming) {
-            onStopStreaming()
+            stopStreaming()
         }
         await camera?.disconnect()
         setConnected(false)
@@ -82,32 +87,66 @@ export default function App() {
         }
     }
 
+    // High-performance streaming using Canvas and requestAnimationFrame
     useEffect(() => {
-        let streamingRef = streaming
-        let timeoutId: NodeJS.Timeout | null = null
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        streamingRef.current = streaming
 
         const streamFrame = async () => {
-            if (!streamingRef || !camera) return
+            if (!streamingRef.current || !camera || !connected) return
 
             try {
                 const result = await camera.captureLiveView()
-                if (result?.data && streamingRef) {
-                    // Clean up previous URL
-                    if (liveViewUrl) {
-                        URL.revokeObjectURL(liveViewUrl)
-                    }
-
+                if (result?.data && streamingRef.current) {
+                    // Decode JPEG binary data directly to ImageBitmap (no URLs!)
                     const blob = new Blob([new Uint8Array(result.data)], { type: 'image/jpeg' })
-                    const url = URL.createObjectURL(blob)
-                    setLiveViewUrl(url)
+                    const imageBitmap = await createImageBitmap(blob)
+                    
+                    // Set canvas dimensions to match image
+                    canvas.width = imageBitmap.width
+                    canvas.height = imageBitmap.height
+                    
+                    // Draw ImageBitmap directly to canvas
+                    ctx.drawImage(imageBitmap, 0, 0)
+                    
+                    // Clean up ImageBitmap resources
+                    imageBitmap.close()
+                    
+                    // Calculate FPS
+                    const now = performance.now()
+                    frameTimestamps.current.push(now)
+                    
+                    // Keep only last 30 frame timestamps for rolling average
+                    if (frameTimestamps.current.length > 30) {
+                        frameTimestamps.current.shift()
+                    }
+                    
+                    // Update FPS display every 500ms
+                    if (now - lastFpsUpdate.current > 500) {
+                        if (frameTimestamps.current.length >= 2) {
+                            const timeSpan = frameTimestamps.current[frameTimestamps.current.length - 1] - frameTimestamps.current[0]
+                            const currentFps = Math.round(((frameTimestamps.current.length - 1) * 1000) / timeSpan)
+                            setFps(currentFps)
+                        }
+                        lastFpsUpdate.current = now
+                    }
+                    
+                    // Schedule next frame
+                    if (streamingRef.current) {
+                        animationFrameRef.current = requestAnimationFrame(streamFrame)
+                    }
                 }
             } catch (error) {
                 console.error('Error capturing live view:', error)
-            }
-
-            // Schedule next frame if still streaming
-            if (streamingRef) {
-                timeoutId = setTimeout(streamFrame, 34)
+                // Continue streaming even if one frame fails
+                if (streamingRef.current) {
+                    animationFrameRef.current = requestAnimationFrame(streamFrame)
+                }
             }
         }
 
@@ -116,26 +155,29 @@ export default function App() {
         }
 
         return () => {
-            streamingRef = false
-            if (timeoutId) {
-                clearTimeout(timeoutId)
-            }
-            if (liveViewUrl) {
-                URL.revokeObjectURL(liveViewUrl)
+            streamingRef.current = false
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current)
+                animationFrameRef.current = null
             }
         }
-    }, [streaming, connected, camera, liveViewUrl])
+    }, [streaming, connected, camera])
 
-    const onStartStreaming = () => {
+    const startStreaming = () => {
         setStreaming(true)
     }
 
-    const onStopStreaming = () => {
+    const stopStreaming = () => {
         setStreaming(false)
-        if (liveViewUrl) {
-            URL.revokeObjectURL(liveViewUrl)
-            setLiveViewUrl(null)
+        streamingRef.current = false
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current)
+            animationFrameRef.current = null
         }
+        // Reset FPS tracking
+        setFps(0)
+        frameTimestamps.current = []
+        lastFpsUpdate.current = 0
     }
 
     return (
@@ -154,17 +196,28 @@ export default function App() {
             {connected && (
                 <div className="relative flex justify-center">
                     <div className="relative border border-primary/10 rounded-md overflow-hidden bg-primary/5">
-                        {liveViewUrl && streaming ? (
-                            <img src={liveViewUrl} alt="Live View" className="max-w-[80vw] max-h-[60vh] block" />
+                        {streaming ? (
+                            <canvas 
+                                ref={canvasRef}
+                                className="max-w-[80vw] max-h-[60vh] block"
+                                style={{ display: streaming ? 'block' : 'none' }}
+                            />
                         ) : (
                             <div className="flex items-center justify-center max-w-[80vw] max-h-[60vh] w-[640px] h-[480px] text-primary">
                                 <span>Live view</span>
                             </div>
                         )}
 
+                        {/* FPS meter in top left */}
+                        {streaming && fps > 0 && (
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded text-white text-xs font-mono">
+                                {fps} FPS
+                            </div>
+                        )}
+
                         {/* Play/Pause button in bottom right */}
                         <button
-                            onClick={streaming ? onStopStreaming : onStartStreaming}
+                            onClick={streaming ? stopStreaming : startStreaming}
                             className="absolute bottom-2 left-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-md flex items-center justify-center text-white transition-all"
                         >
                             {streaming ? (
