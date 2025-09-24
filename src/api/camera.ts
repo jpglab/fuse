@@ -1,12 +1,9 @@
 import { TransportFactory } from '@transport/transport-factory'
 import { CameraFactory } from '@camera/camera-factory'
-import { CameraInterface, CameraOptions } from '@camera/interfaces/camera.interface'
+import { CameraInfo, CameraInterface, CameraOptions } from '@camera/interfaces/camera.interface'
 import { TransportType } from '@transport/interfaces/transport-types'
 import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 import { listCameras } from '@api/discovery'
-import { Photo } from '@api/photo'
-import { toBuffer } from '@core/buffers'
-import { ProtocolInterface } from '@core/protocol'
 import { ObjectInfoParsed } from '@camera/generic/object-info-dataset'
 
 /**
@@ -58,10 +55,7 @@ export class Camera {
             }
         }
 
-        await this.establishConnection()
-    }
-
-    private async establishConnection(): Promise<void> {
+        // Establish connection
         if (this.options.ip) {
             throw new Error('IP connections not yet implemented')
         }
@@ -102,7 +96,7 @@ export class Camera {
                 serialNumber: cameraInfo.serialNumber,
                 firmwareVersion: cameraInfo.firmwareVersion,
                 batteryLevel: cameraInfo.batteryLevel,
-                vendor: cameraInfo.manufacturer,
+                vendor: detectedVendor, // Keep the detected vendor, don't overwrite with manufacturer
             }
         } catch (error) {
             console.warn('[Camera] Could not retrieve camera info:', error)
@@ -128,19 +122,26 @@ export class Camera {
     }
 
     // Simple getters that delegate to the underlying camera implementation
-    async getCameraInfo() {
-        if (!this.cameraImplementation) throw new Error('Camera not connected')
-        return this.cameraImplementation.getCameraInfo()
+    async getCameraInfo(): Promise<CameraInfo | null> {
+        const info = await this.cameraImplementation?.getCameraInfo()
+        if (!info) return null
+        
+        // Override manufacturer with the detected vendor if we have one
+        if (this.deviceDescriptor?.vendor) {
+            return {
+                ...info,
+                manufacturer: this.deviceDescriptor.vendor
+            }
+        }
+        return info
     }
 
     async captureImage(): Promise<{ info: ObjectInfoParsed; data: Uint8Array } | null> {
-        if (!this.cameraImplementation) throw new Error('Camera not connected')
-        return this.cameraImplementation.captureImage()
+        return this.cameraImplementation?.captureImage() || null
     }
 
-    async captureLiveView() {
-        // TODO
-        return null
+    async captureLiveView(): Promise<{ info: ObjectInfoParsed; data: Uint8Array } | null> {
+        return this.cameraImplementation?.captureLiveView() || null
     }
 
     async getDeviceProperty<T = any>(propertyName: string): Promise<T> {
@@ -151,17 +152,5 @@ export class Camera {
     async setDeviceProperty(propertyName: string, value: any): Promise<void> {
         if (!this.cameraImplementation) throw new Error('Camera not connected')
         return this.cameraImplementation.setDeviceProperty(propertyName, value)
-    }
-
-    // Convenience method for simple photo capture
-    async takePhoto(): Promise<Photo> {
-        await this.captureImage()
-        // Return a placeholder photo indicating success
-        return new Photo(toBuffer(new Uint8Array()), 'capture_successful.jpg')
-    }
-
-    getProtocol(): ProtocolInterface {
-        if (!this.cameraImplementation) throw new Error('Camera not connected')
-        return this.cameraImplementation.getProtocol()
     }
 }

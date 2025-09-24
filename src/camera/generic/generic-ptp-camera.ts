@@ -98,7 +98,7 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
         // Use property's encode if available
         const data =
             'encode' in property && typeof property.encode === 'function'
-                ? property.encode(value)
+                ? (property.encode as (v: any) => Uint8Array)(value)
                 : encodePTPValue(value, property.type)
 
         const response = await this.protocol.sendOperation({
@@ -143,9 +143,5 @@ export class GenericPTPCamera extends EventEmitter implements CameraInterface {
     async captureLiveView(): Promise<{ info: ObjectInfoParsed; data: Uint8Array } | null> {
         // TODO
         return null
-    }
-
-    getProtocol(): ProtocolInterface {
-        return this.protocol
     }
 }

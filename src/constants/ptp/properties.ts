@@ -29,8 +29,8 @@ export const parseShutter = (v: string): [number, number] => {
     // Handle fractions like 1/250 or 1/8000
     if (s.includes('/')) {
         const parts = s.split('/')
-        const n = parseInt(parts[0]) || 1
-        const d = parseInt(parts[1]) || 1
+        const n = parseInt(parts[0] || '1') || 1
+        const d = parseInt(parts[1] || '1') || 1
         return [n, d]
     }
     

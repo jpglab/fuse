@@ -1,6 +1,5 @@
 import { TransportOptions } from '@transport/interfaces/transport-types'
-import { ProtocolInterface } from '@core/protocol'
-import { ObjectInfo, ObjectInfoParsed } from '@camera/generic/object-info-dataset'
+import { ObjectInfoParsed } from '@camera/generic/object-info-dataset'
 
 /**
  * Camera connection options
@@ -70,8 +69,6 @@ export interface CameraInterface {
      * Automatically handles enabling/disabling live view as needed
      */
     captureLiveView(): Promise<{ info: ObjectInfoParsed; data: Uint8Array } | null>
-
-    getProtocol(): ProtocolInterface
 }
 
 /**
