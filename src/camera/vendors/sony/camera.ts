@@ -120,12 +120,12 @@ export class SonyCamera extends GenericPTPCamera {
      */
     async captureImage(): Promise<{ info: ObjectInfoParsed; data: Uint8Array } | null> {
         await this.setDeviceProperty('SHUTTER_HALF_RELEASE_BUTTON', 'DOWN')
-        await new Promise(resolve => setTimeout(resolve, 250))
+        await new Promise(resolve => setTimeout(resolve, 500))
         await this.setDeviceProperty('SHUTTER_RELEASE_BUTTON', 'DOWN')
         await this.setDeviceProperty('SHUTTER_RELEASE_BUTTON', 'UP')
         await this.setDeviceProperty('SHUTTER_HALF_RELEASE_BUTTON', 'UP')
 
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         const objectInfo = await this.protocol.sendOperation({
             ...SonyOperations.GET_OBJECT_INFO,
@@ -160,6 +160,8 @@ export class SonyCamera extends GenericPTPCamera {
             ...SonyOperations.GET_OBJECT_INFO,
             parameters: [SONY_LIVE_VIEW_OBJECT_HANDLE],
         })
+
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         const objectInfoParsed = parseObjectInfo(objectInfo.data!)
         const objectCompressedSize = objectInfoParsed.objectCompressedSize
