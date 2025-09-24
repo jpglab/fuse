@@ -210,6 +210,10 @@ export class SonyCamera extends GenericPTPCamera {
             : null
     }
 
+    /**
+     * TODO: bad name, it's not a stream, it's a frame, but the way we capture and process
+     * these is way, way faster than captureLiveView
+     */
     async streamLiveView(): Promise<Uint8Array> {
         if (!this.liveViewEnabled) {
             await this.setDeviceProperty('SET_LIVE_VIEW_ENABLE', 'ENABLE')
@@ -219,7 +223,7 @@ export class SonyCamera extends GenericPTPCamera {
         const response = await this.protocol.sendOperation({
             ...SonyOperations.GET_OBJECT,
             parameters: [SONY_LIVE_VIEW_OBJECT_HANDLE],
-            maxDataLength: 512 * 1024, // 512KB
+            maxDataLength: 256 * 1024 // 256KB
         })
 
         // Parse Sony's live view format

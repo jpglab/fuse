@@ -48,6 +48,11 @@ export default function App() {
     const animationFrameRef = useRef<number | null>(null)
     const frameTimestamps = useRef<number[]>([])
     const lastFpsUpdate = useRef(0)
+    const [exposureSettings, setExposureSettings] = useState<{
+        aperture: string
+        shutterSpeed: string
+        iso: string
+    } | null>(null)
 
     useEffect(() => {
         const getCameraInfo = async () => {
@@ -101,41 +106,47 @@ export default function App() {
             if (!streamingRef.current || !camera || !connected) return
 
             try {
+                const exposureSettings = await camera.getDeviceProperty('APERTURE')
+                const shutterSpeed = await camera.getDeviceProperty('SHUTTER_SPEED')
+                const iso = await camera.getDeviceProperty('ISO')
+                setExposureSettings({ aperture: exposureSettings, shutterSpeed: shutterSpeed, iso: iso })
+
                 const result = await camera.streamLiveView()
                 if (result && streamingRef.current) {
                     // Decode JPEG binary data directly to ImageBitmap (no URLs!)
                     const blob = new Blob([new Uint8Array(result)], { type: 'image/jpeg' })
                     const imageBitmap = await createImageBitmap(blob)
-                    
+
                     // Set canvas dimensions to match image
                     canvas.width = imageBitmap.width
                     canvas.height = imageBitmap.height
-                    
+
                     // Draw ImageBitmap directly to canvas
                     ctx.drawImage(imageBitmap, 0, 0)
-                    
+
                     // Clean up ImageBitmap resources
                     imageBitmap.close()
-                    
+
                     // Calculate FPS
                     const now = performance.now()
                     frameTimestamps.current.push(now)
-                    
+
                     // Keep only last 30 frame timestamps for rolling average
                     if (frameTimestamps.current.length > 30) {
                         frameTimestamps.current.shift()
                     }
-                    
+
                     // Update FPS display every 500ms
                     if (now - lastFpsUpdate.current > 500) {
                         if (frameTimestamps.current.length >= 2) {
-                            const timeSpan = frameTimestamps.current[frameTimestamps.current.length - 1] - frameTimestamps.current[0]
+                            const timeSpan =
+                                frameTimestamps.current[frameTimestamps.current.length - 1] - frameTimestamps.current[0]
                             const currentFps = Math.round(((frameTimestamps.current.length - 1) * 1000) / timeSpan)
                             setFps(currentFps)
                         }
                         lastFpsUpdate.current = now
                     }
-                    
+
                     // Schedule next frame
                     if (streamingRef.current) {
                         animationFrameRef.current = requestAnimationFrame(streamFrame)
@@ -188,7 +199,7 @@ export default function App() {
                 {connected && <Button onClick={onCaptureLiveView}>Capture Live View</Button>}
             </div>
 
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm text-primary/30">
                 {connected ? `${cameraInfo?.manufacturer} Connected` : 'Disconnected'}
             </div>
 
@@ -197,7 +208,7 @@ export default function App() {
                 <div className="relative flex justify-center">
                     <div className="relative border border-primary/10 rounded-md overflow-hidden bg-primary/5">
                         {streaming ? (
-                            <canvas 
+                            <canvas
                                 ref={canvasRef}
                                 className="max-w-[80vw] max-h-[60vh] block"
                                 style={{ display: streaming ? 'block' : 'none' }}
@@ -210,15 +221,31 @@ export default function App() {
 
                         {/* FPS meter in top left */}
                         {streaming && fps > 0 && (
-                            <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded text-white text-xs font-mono">
-                                {fps} FPS
+                            <div className="absolute top-2 left-2 px-2 py-1 bg-black/70 rounded text-primary/30 text-xs font-mono">
+                                <span
+                                    style={{
+                                        color: fps > 24 ? '#4ade8088' : fps > 15 ? '#facc1588' : '#f8717188',
+                                    }}
+                                >
+                                    {fps}
+                                </span>{' '}
+                                FPS
+                            </div>
+                        )}
+
+                        {/* Exposure settings in top right */}
+                        {streaming && exposureSettings && (
+                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 rounded text-primary/30 text-xs font-mono flex flex-row gap-4">
+                                <span>{exposureSettings.aperture}</span>
+                                <span>{exposureSettings.shutterSpeed}</span>
+                                <span>{exposureSettings.iso}</span>
                             </div>
                         )}
 
                         {/* Play/Pause button in bottom right */}
                         <button
                             onClick={streaming ? stopStreaming : startStreaming}
-                            className="absolute bottom-2 left-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-md flex items-center justify-center text-white transition-all"
+                            className="absolute bottom-2 left-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-md flex items-center justify-center text-primary/30 transition-all"
                         >
                             {streaming ? (
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
