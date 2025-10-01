@@ -18,4 +18,9 @@ export default defineConfig({
             '@constants': path.resolve('../../src/constants'),
         },
     },
+    build: {
+        rollupOptions: {
+            external: ['usb'],
+        },
+    },
 })
