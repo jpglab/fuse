@@ -25,7 +25,7 @@ import { OperationDefinition } from '@ptp/types/operation'
 import { PropertyDefinition } from '@ptp/types/property'
 import { ResponseDefinition } from '@ptp/types/response'
 import { FormatDefinition } from '@ptp/types/format'
-import { LoggerInterface } from '@transport/usb/logger'
+import { Logger } from '@core/logger'
 
 // Helper to extract codec type from parameter definition
 type ParamCodecType<P> = P extends { codec: infer C } ? CodecType<C> : never
@@ -86,12 +86,12 @@ export class GenericCamera<
     protected propertyDefinitions: Props
     protected responseDefinitions: Resps
     protected formatDefinitions: Formats
-    protected logger: LoggerInterface
+    protected logger: Logger<Ops>
     protected baseCodecs: ReturnType<typeof createBaseCodecs>
 
     constructor(
         transport: TransportInterface,
-        logger: LoggerInterface,
+        logger: Logger<Ops>,
         operationDefinitions: Ops = standardOperationDefinitions as any,
         propertyDefinitions: Props = standardPropertyDefinitions as any,
         responseDefinitions: Resps = standardResponseDefinitions as any,
@@ -118,12 +118,6 @@ export class GenericCamera<
             await (this.send as any)('OpenSession', { SessionID: this.sessionId })
         } catch (error: any) {
             if (error.message?.includes('SessionAlreadyOpen')) {
-                this.logger.addLog({
-                    type: 'warning',
-                    message: 'Session already open, closing and retrying',
-                    status: 'pending',
-                    source: 'PTP',
-                })
                 await (this.send as any)('CloseSession', {})
                 await (this.send as any)('OpenSession', { SessionID: this.sessionId })
             } else {
@@ -160,43 +154,40 @@ export class GenericCamera<
             throw new Error(`Unknown operation: ${operationName}`)
         }
 
+        const transactionId = this.getNextTransactionId()
+
+        const encodedParams: Uint8Array[] = []
+        for (const paramDef of operation.operationParameters) {
+            if (!paramDef) continue
+
+            const value = (params as any)[paramDef.name]
+            if (value === undefined && !paramDef.required) continue
+            if (value === undefined && paramDef.required) {
+                throw new Error(`Required parameter ${paramDef.name} missing`)
+            }
+
+            if (value !== undefined) {
+                const codec = this.resolveCodec(paramDef.codec)
+                encodedParams.push(codec.encode(value))
+            }
+        }
+
         const logId = this.logger.addLog({
             type: 'ptp_operation',
-            operation: operationName,
-            parameters: params as Record<string, any>,
-            message: 'Calling',
-            status: 'pending',
+            level: 'info',
+            sessionId: this.sessionId!,
+            transactionId,
+            requestPhase: {
+                timestamp: Date.now(),
+                operationName: operationName as any,
+                encodedParams,
+                decodedParams: params as any,
+            },
         })
 
         try {
-            const encodedParams: Uint8Array[] = []
-            for (const paramDef of operation.operationParameters) {
-                if (!paramDef) continue
-
-                const value = (params as any)[paramDef.name]
-                if (value === undefined && !paramDef.required) continue
-                if (value === undefined && paramDef.required) {
-                    throw new Error(`Required parameter ${paramDef.name} missing`)
-                }
-
-                if (value !== undefined) {
-                    const codec = this.resolveCodec(paramDef.codec)
-                    encodedParams.push(codec.encode(value))
-                }
-            }
-
             // Build and send COMMAND container
-            const transactionId = this.getNextTransactionId()
             const commandContainer = this.buildCommand(operation.code, transactionId, encodedParams)
-
-            // Log command details for debugging
-            this.logger.addLog({
-                type: 'info',
-                message: `Command params: ${encodedParams.map((p, i) => `P${i+1}=[${Array.from(p).map(b => b.toString(16).padStart(2, '0')).join(' ')}]`).join(', ')}`,
-                status: 'succeeded',
-                source: 'CAM',
-            })
-
             await this.transport.send(commandContainer)
 
             // Handle data phase
@@ -205,6 +196,17 @@ export class GenericCamera<
                 // Send DATA to camera
                 if (!data) throw new Error('Data required for dataDirection=in')
                 const dataContainer = this.buildData(operation.code, transactionId, data)
+
+                this.logger.updateLog(logId, {
+                    dataPhase: {
+                        timestamp: Date.now(),
+                        direction: 'in',
+                        bytes: data.length,
+                        encodedData: data,
+                        maxDataLength,
+                    },
+                })
+
                 await this.transport.send(dataContainer)
             } else if (operation.dataDirection === 'out') {
                 // Receive DATA from camera
@@ -213,38 +215,34 @@ export class GenericCamera<
                 const dataRaw = await this.transport.receive(bufferSize)
                 const dataContainer = this.parseContainer(dataRaw)
                 receivedData = dataContainer.payload
+
+                this.logger.updateLog(logId, {
+                    dataPhase: {
+                        timestamp: Date.now(),
+                        direction: 'out',
+                        bytes: receivedData?.length || 0,
+                        encodedData: receivedData,
+                        maxDataLength,
+                    },
+                })
             }
 
             // Receive RESPONSE
             const responseRaw = await this.transport.receive(512)
             const responseContainer = this.parseContainer(responseRaw)
 
-            const responseDef = this.responseDefinitions.find(r => r.code === responseContainer.code)
-            const responseStr = responseDef
-                ? `${responseDef.name} (0x${responseContainer.code.toString(16)})`
-                : `0x${responseContainer.code.toString(16)}`
-
-            this.logger.updateEntry(logId, {
-                status: responseContainer.code === 0x2001 ? 'succeeded' : 'failed',
-                message: `Called → ${responseStr}`,
+            this.logger.updateLog(logId, {
+                responsePhase: {
+                    timestamp: Date.now(),
+                    code: responseContainer.code,
+                },
             })
-
-            if (responseContainer.code !== 0x2001) {
-                this.logger.updateEntry(logId, {
-                    status: 'failed',
-                    message: `Failed with error: ${responseDef?.name}: ${responseDef?.description}`,
-                })
-            }
 
             return {
                 code: responseContainer.code,
                 data: receivedData,
             }
         } catch (error) {
-            this.logger.updateEntry(logId, {
-                status: 'failed',
-                message: `Failed with error: ${error}`,
-            })
             throw error
         }
     }
@@ -263,50 +261,18 @@ export class GenericCamera<
             throw new Error(`Property ${propertyName} is not readable`)
         }
 
-        const logId = this.logger.addLog({
-            type: 'ptp_property_get',
-            property: propertyName,
-            message: 'Getting',
-            status: 'pending',
+        const response = await (this.send as any)('GetDevicePropValue', {
+            DevicePropCode: property.code,
         })
 
-        try {
-            const response = await (this.send as any)('GetDevicePropValue', {
-                DevicePropCode: property.code,
-            })
-
-            const responseDef = this.responseDefinitions.find(r => r.code === response.code)
-            const responseStr = responseDef
-                ? `${responseDef.name} (0x${response.code.toString(16)})`
-                : `0x${response.code.toString(16)}`
-
-            this.logger.updateEntry(logId, {
-                status: response.code === 0x2001 ? 'succeeded' : 'failed',
-                message: `Got → ${responseStr}`,
-            })
-
-            if (response.code !== 0x2001) {
-                const errorMsg = responseDef
-                    ? `${responseDef.name}: ${responseDef.description}`
-                    : `Unknown response code: 0x${response.code.toString(16)}`
-                throw new Error(errorMsg)
-            }
-
-            if (!response.data) {
-                throw new Error('No data received from GetDevicePropValue')
-            }
-
-            const codec = this.resolveCodec(property.codec)
-            const result = codec.decode(response.data)
-
-            return result.value as PropertyValue<N, Props>
-        } catch (error) {
-            this.logger.updateEntry(logId, {
-                status: 'failed',
-                message: 'Failed to get',
-            })
-            throw error
+        if (!response.data) {
+            throw new Error('No data received from GetDevicePropValue')
         }
+
+        const codec = this.resolveCodec(property.codec)
+        const result = codec.decode(response.data)
+
+        return result.value as PropertyValue<N, Props>
     }
 
     /**
@@ -322,48 +288,15 @@ export class GenericCamera<
             throw new Error(`Property ${propertyName} is not writable`)
         }
 
-        const logId = this.logger.addLog({
-            type: 'ptp_property_set',
-            property: propertyName,
-            value,
-            message: 'Setting',
-            status: 'pending',
-        })
-
-        try {
-            const codec = this.resolveCodec(property.codec)
-            const encodedValue = codec.encode(value)
-            const response = await (this.send as any)(
-                'SetDevicePropValue',
-                {
-                    DevicePropCode: property.code,
-                },
-                encodedValue
-            )
-
-            const responseDef = this.responseDefinitions.find(r => r.code === response.code)
-            const responseStr = responseDef
-                ? `${responseDef.name} (0x${response.code.toString(16)})`
-                : `0x${response.code.toString(16)}`
-
-            this.logger.updateEntry(logId, {
-                status: response.code === 0x2001 ? 'succeeded' : 'failed',
-                message: `Set → ${responseStr}`,
-            })
-
-            if (response.code !== 0x2001) {
-                const errorMsg = responseDef
-                    ? `${responseDef.name}: ${responseDef.description}`
-                    : `Unknown response code: 0x${response.code.toString(16)}`
-                throw new Error(errorMsg)
-            }
-        } catch (error) {
-            this.logger.updateEntry(logId, {
-                status: 'failed',
-                message: 'Failed to set',
-            })
-            throw error
-        }
+        const codec = this.resolveCodec(property.codec)
+        const encodedValue = codec.encode(value)
+        const response = await (this.send as any)(
+            'SetDevicePropValue',
+            {
+                DevicePropCode: property.code,
+            },
+            encodedValue
+        )
     }
 
     on(eventName: string, handler: (event: PTPEventData) => void): void {
@@ -434,7 +367,12 @@ export class GenericCamera<
         return buffer
     }
 
-    private parseContainer(data: Uint8Array): { type: number; code: number; transactionId: number; payload: Uint8Array } {
+    private parseContainer(data: Uint8Array): {
+        type: number
+        code: number
+        transactionId: number
+        payload: Uint8Array
+    } {
         if (data.length < 12) {
             throw new Error(`Container too short: ${data.length} bytes`)
         }
@@ -449,7 +387,10 @@ export class GenericCamera<
         return { type, code, transactionId, payload }
     }
 
-    protected resolveCodec<T>(codec: CodecDefinition<T>): { encode: (value: T) => Uint8Array; decode: (buffer: Uint8Array, offset?: number) => { value: T; bytesRead: number } } {
+    protected resolveCodec<T>(codec: CodecDefinition<T>): {
+        encode: (value: T) => Uint8Array
+        decode: (buffer: Uint8Array, offset?: number) => { value: T; bytesRead: number }
+    } {
         if ('encode' in codec && codec.encode && 'decode' in codec && codec.decode) {
             const anyCodec = codec as any
 

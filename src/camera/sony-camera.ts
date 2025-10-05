@@ -42,6 +42,7 @@ const SDIO_AUTH_PHASES = {
 } as const
 
 import { LoggerInterface } from '@transport/usb/logger'
+import { Logger } from '@core/logger'
 
 const SONY_CAPTURED_IMAGE_OBJECT_HANDLE = 0xffffc001
 const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
@@ -54,7 +55,7 @@ export class SonyCamera extends GenericCamera<
 > {
     private liveViewEnabled = false
 
-    constructor(transport: TransportInterface, logger: LoggerInterface) {
+    constructor(transport: TransportInterface, logger: Logger<typeof mergedOperationDefinitions>) {
         super(
             transport,
             logger,
@@ -77,22 +78,11 @@ export class SonyCamera extends GenericCamera<
 
         // Check if session was already open (response code 0x201e = SessionAlreadyOpen)
         if (openResult.code === 0x201e) {
-            this.logger.addLog({
-                type: 'warning',
-                message: 'Session already open, closing and retrying',
-                status: 'pending',
-                source: 'CAM',
-            })
             await this.send('CloseSession', {})
             const retryResult = await this.send('SDIO_OpenSession', {
                 sessionId: this.sessionId,
                 functionMode: SDIO_AUTH_FUNCTION_MODE,
             })
-            if (retryResult.code !== 0x2001) {
-                throw new Error(`Failed to open session after retry: 0x${retryResult.code.toString(16)}`)
-            }
-        } else if (openResult.code !== 0x2001) {
-            throw new Error(`Failed to open session: 0x${openResult.code.toString(16)}`)
         }
 
         // Small delay after opening session before starting authentication
@@ -122,15 +112,6 @@ export class SonyCamera extends GenericCamera<
             flagOfDevicePropertyOption: SDIO_AUTH_DEVICE_PROPERTY_OPTION,
         })
 
-        if (deviceInfo.code !== 0x2001) {
-            this.logger.addLog({
-                type: 'warning',
-                message: `SDIO_GetExtDeviceInfo failed with code 0x${deviceInfo.code.toString(16)}, continuing anyway`,
-                status: 'failed',
-                source: 'CAM',
-            })
-        }
-
         await this.send('SDIO_Connect', {
             phaseType: SDIO_AUTH_PHASES.PHASE_3,
             keyCode1: SDIO_AUTH_KEY_CODE_1,
@@ -144,7 +125,10 @@ export class SonyCamera extends GenericCamera<
         if (propertyName === 'Exposure') {
             const meteredExposure = await this.get('MeteredExposure' as N)
             const exposureCompensation = await this.get('ExposureCompensation' as N)
-            return (meteredExposure !== '0 EV' ? meteredExposure : exposureCompensation) as PropertyValue<N, typeof mergedPropertyDefinitions>
+            return (meteredExposure !== '0 EV' ? meteredExposure : exposureCompensation) as PropertyValue<
+                N,
+                typeof mergedPropertyDefinitions
+            >
         }
 
         const property = this.propertyDefinitions.find(p => p.name === propertyName)
@@ -180,10 +164,7 @@ export class SonyCamera extends GenericCamera<
         }
 
         // Handle custom codecs that need to decode from bytes
-        const isCustomCodec = codec &&
-            typeof codec === 'object' &&
-            'type' in codec &&
-            codec.type === 'custom'
+        const isCustomCodec = codec && typeof codec === 'object' && 'type' in codec && codec.type === 'custom'
 
         if (isCustomCodec) {
             try {
@@ -213,9 +194,7 @@ export class SonyCamera extends GenericCamera<
         }
 
         const isControlProperty =
-            /ShutterReleaseButton|ShutterHalfReleaseButton|SetLiveViewEnable|MovieRecButton/i.test(
-                property.name
-            )
+            /ShutterReleaseButton|ShutterHalfReleaseButton|SetLiveViewEnable|MovieRecButton/i.test(property.name)
 
         const codec = this.resolveCodec(property.codec as any)
         const encodedValue = codec.encode(value as any)

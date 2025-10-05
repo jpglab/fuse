@@ -1,7 +1,8 @@
 import { TransportInterface, PTPEvent } from '@transport/interfaces/transport.interface'
 import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 import { TransportType } from '@transport/interfaces/transport-types'
-import { LoggerInterface } from '@transport/usb/logger'
+import { Logger } from '@core/logger'
+import { OperationDefinition } from '@ptp/types/operation'
 import { USBClassRequestHandler } from './usb-class-requests'
 import { USBContainerBuilder, USBContainerType } from './usb-container'
 import { USBDeviceFinder } from './usb-device-finder'
@@ -58,13 +59,13 @@ export class USBTransport implements TransportInterface {
     private readonly deviceFinder: USBDeviceFinder
     private readonly endpointManager: USBEndpointManager
 
-    constructor(logger: LoggerInterface) {
+    constructor(logger: Logger<readonly OperationDefinition[]>) {
         this.logger = logger
         this.deviceFinder = new USBDeviceFinder()
         this.endpointManager = new USBEndpointManager()
     }
 
-    private logger: LoggerInterface
+    private logger: Logger<readonly OperationDefinition[]>
 
     /**
      * Discover available USB devices
