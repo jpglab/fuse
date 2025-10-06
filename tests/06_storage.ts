@@ -3,6 +3,7 @@ import { Logger } from '@core/logger'
 import { USBTransport } from '@transport/usb/usb-transport'
 import { sonyOperationDefinitions } from '@ptp/definitions/vendors/sony/sony-operation-definitions'
 import { operationDefinitions as standardOperationDefinitions } from '@ptp/definitions/operation-definitions'
+import { ObjectInfo } from 'src'
 
 const mergedOperationDefinitions = [...standardOperationDefinitions, ...sonyOperationDefinitions] as const
 
@@ -60,6 +61,27 @@ async function main() {
     const objectIds = await camera.send('GetObjectHandles', {
         StorageID: storageIds.data[0],
     })
+
+    const objectInfos: { [ObjectHandle: number]: ObjectInfo } = {}
+
+    for await (const objectId of objectIds.data) {
+        const objectInfo = await camera.send('GetObjectInfo', {
+            ObjectHandle: objectId,
+        })
+        objectInfos[objectId] = objectInfo.data
+    }
+
+    for await (const objectId of Object.keys(objectInfos).map(Number)) {
+        const objectData = await camera.send(
+            'GetObject',
+            {
+                ObjectHandle: objectId,
+            },
+            undefined,
+            objectInfos[objectId].objectCompressedSize + 10 * 1024 * 1024 // Add 10MB buffer for safety
+        )
+        console.log('Object:', objectData)
+    }
 
     await camera.send('SDIO_SetContentsTransferMode', {
         ContentsSelectType: 'HOST',

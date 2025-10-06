@@ -170,16 +170,22 @@ export class GenericCamera<
         for (const paramDef of operation.operationParameters) {
             if (!paramDef) continue
 
-            const value = (params as any)[paramDef.name]
+            let value = (params as any)[paramDef.name]
+
+            // Use default value if parameter is undefined and has a default
+            if (value === undefined && 'defaultValue' in paramDef) {
+                value = (paramDef as any).defaultValue
+            }
+
+            // Skip optional parameters without defaults if undefined
             if (value === undefined && !paramDef.required) continue
+
             if (value === undefined && paramDef.required) {
                 throw new Error(`Required parameter ${paramDef.name} missing`)
             }
 
-            if (value !== undefined) {
-                const codec = this.resolveCodec(paramDef.codec)
-                encodedParams.push(codec.encode(value))
-            }
+            const codec = this.resolveCodec(paramDef.codec)
+            encodedParams.push(codec.encode(value))
         }
 
         const logId = this.logger.addLog({
