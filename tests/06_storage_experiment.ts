@@ -78,58 +78,75 @@ async function main() {
         .map(Number)
         .filter(id => objectInfos[id].associationType === 0)
 
-    // Try with just the first object to debug
-    const firstObjectId = nonAssociationObjectIds[0]
-    const objectSize = objectInfos[firstObjectId].objectCompressedSize
-    console.log(`Attempting to get object ${firstObjectId.toString(16)}, size: ${objectSize} bytes`)
+    console.log(`Found ${nonAssociationObjectIds.length} files to download`)
 
-    try {
-        // Use Sony's SDIO_GetPartialLargeObject to retrieve the file in chunks
-        const CHUNK_SIZE = 1024 * 1024 // 1MB chunks
-        const chunks: Uint8Array[] = []
-        let offset = 0
+    // Import fs and path once
+    const fs = await import('fs')
+    const path = await import('path')
 
-        while (offset < objectSize) {
-            const bytesToRead = Math.min(CHUNK_SIZE, objectSize - offset)
-
-            console.log(`Reading chunk at offset ${offset}, size ${bytesToRead} bytes`)
-
-            // Split 64-bit offset into two 32-bit values
-            // For offsets < 4GB, upper will always be 0
-            const offsetLower = offset & 0xffffffff
-            const offsetUpper = Math.floor(offset / 0x100000000) // Divide by 2^32 to get upper 32 bits
-
-            const chunkResponse = await camera.send('SDIO_GetPartialLargeObject', {
-                ObjectHandle: firstObjectId,
-                OffsetLower: offsetLower,
-                OffsetUpper: offsetUpper,
-                MaxBytes: bytesToRead,
-            })
-
-            if (chunkResponse.data) {
-                chunks.push(chunkResponse.data)
-                offset += chunkResponse.data.length
-                console.log(`Received ${chunkResponse.data.length} bytes, total: ${offset}/${objectSize}`)
-            } else {
-                console.error('No data received in chunk response')
-                break
-            }
-        }
-
-        // Combine all chunks
-        const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
-        const completeFile = new Uint8Array(totalBytes)
-        let writeOffset = 0
-        for (const chunk of chunks) {
-            completeFile.set(chunk, writeOffset)
-            writeOffset += chunk.length
-        }
-
-        console.log(`Object retrieved successfully! Total size: ${completeFile.length} bytes`)
-        console.log(`First 32 bytes (hex): ${Array.from(completeFile.slice(0, 32)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`)
-    } catch (error) {
-        console.error('Failed to get object:', error)
+    // Ensure captured-images directory exists
+    const capturedImagesDir = '/Users/kevinschaich/repositories/jpglab/fuse/captured_images'
+    if (!fs.existsSync(capturedImagesDir)) {
+        fs.mkdirSync(capturedImagesDir, { recursive: true })
     }
+
+    // Download all files
+    for (const objectId of nonAssociationObjectIds) {
+        const objectSize = objectInfos[objectId].objectCompressedSize
+        const filename = objectInfos[objectId].filename
+        const outputPath = path.join(capturedImagesDir, filename)
+
+        console.log(`\n[${nonAssociationObjectIds.indexOf(objectId) + 1}/${nonAssociationObjectIds.length}] Downloading ${filename} (${(objectSize / 1024 / 1024).toFixed(2)} MB)`)
+
+        try {
+            // Use Sony's SDIO_GetPartialLargeObject to retrieve the file in chunks
+            const CHUNK_SIZE = 1024 * 1024 // 1MB chunks
+            const chunks: Uint8Array[] = []
+            let offset = 0
+
+            while (offset < objectSize) {
+                const bytesToRead = Math.min(CHUNK_SIZE, objectSize - offset)
+
+                // Split 64-bit offset into two 32-bit values
+                const offsetLower = offset & 0xffffffff
+                const offsetUpper = Math.floor(offset / 0x100000000) // Divide by 2^32 to get upper 32 bits
+
+                const chunkResponse = await camera.send('SDIO_GetPartialLargeObject', {
+                    ObjectHandle: objectId,
+                    OffsetLower: offsetLower,
+                    OffsetUpper: offsetUpper,
+                    MaxBytes: bytesToRead,
+                })
+
+                if (chunkResponse.data) {
+                    chunks.push(chunkResponse.data)
+                    offset += chunkResponse.data.length
+                    const progress = ((offset / objectSize) * 100).toFixed(1)
+                    process.stdout.write(`\r  Progress: ${progress}% (${(offset / 1024 / 1024).toFixed(2)} / ${(objectSize / 1024 / 1024).toFixed(2)} MB)`)
+                } else {
+                    console.error('\n  No data received in chunk response')
+                    break
+                }
+            }
+
+            // Combine all chunks
+            const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+            const completeFile = new Uint8Array(totalBytes)
+            let writeOffset = 0
+            for (const chunk of chunks) {
+                completeFile.set(chunk, writeOffset)
+                writeOffset += chunk.length
+            }
+
+            // Write file
+            fs.writeFileSync(outputPath, completeFile)
+            console.log(`\n  ✓ Saved to: ${outputPath}`)
+        } catch (error) {
+            console.error(`\n  ✗ Failed to download ${filename}:`, error)
+        }
+    }
+
+    console.log(`\n✓ Download complete! ${nonAssociationObjectIds.length} files saved to ${capturedImagesDir}`)
 
     await camera.send('SDIO_SetContentsTransferMode', {
         ContentsSelectType: 'HOST',
