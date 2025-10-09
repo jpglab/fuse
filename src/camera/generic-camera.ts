@@ -376,9 +376,10 @@ export class GenericCamera<
 
     /**
      * Get property with automatic type inference from definitions
-     * NO MANUAL OVERLOADS - types come directly from property-definitions.ts
+     * Returns full property descriptor including current value, supported values, etc.
+     * Similar to Sony's SDIO_GetExtDevicePropValue but using standard GetDevicePropDesc
      */
-    async get<N extends PropertyName<Props>>(propertyName: N): Promise<PropertyValue<N, Props>> {
+    async get<N extends PropertyName<Props>>(propertyName: N): Promise<any> {
         const property = this.propertyDefinitions.find(p => p.name === propertyName)
         if (!property) {
             throw new Error(`Unknown property: ${propertyName}`)
@@ -388,18 +389,16 @@ export class GenericCamera<
             throw new Error(`Property ${propertyName} is not readable`)
         }
 
-        const response = await (this.send as any)('GetDevicePropValue', {
+        // Use GetDevicePropDesc to get full descriptor including current value
+        const response = await (this.send as any)('GetDevicePropDesc', {
             DevicePropCode: property.code,
         })
 
         if (!response.data) {
-            throw new Error('No data received from GetDevicePropValue')
+            throw new Error('No data received from GetDevicePropDesc')
         }
 
-        const codec = this.resolveCodec(property.codec)
-        const result = codec.decode(response.data)
-
-        return result.value as PropertyValue<N, Props>
+        return response.data
     }
 
     /**

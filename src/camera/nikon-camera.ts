@@ -36,12 +36,11 @@ export class NikonCamera extends GenericCamera<
     }
 
     /**
-     * Get property using Nikon's GetDevicePropValueEx operation
-     * Returns raw property value bytes, same as standard GetDevicePropValue
+     * Get property using Nikon's GetDevicePropDescEx operation
+     * Returns full property descriptor including current value, supported values, etc.
+     * Similar to Sony's SDIO_GetExtDevicePropValue but using Nikon's GetDevicePropDescEx
      */
-    async get<N extends PropertyName<typeof standardPropertyDefinitions>>(
-        propertyName: N
-    ): Promise<PropertyValue<N, typeof standardPropertyDefinitions>> {
+    async get<N extends PropertyName<typeof standardPropertyDefinitions>>(propertyName: N): Promise<any> {
         const property = this.propertyDefinitions.find(p => p.name === propertyName)
         if (!property) {
             throw new Error(`Unknown property: ${propertyName}`)
@@ -51,18 +50,16 @@ export class NikonCamera extends GenericCamera<
             throw new Error(`Property ${propertyName} is not readable`)
         }
 
-        const response = await this.send('GetDevicePropValueEx', {
+        // Use GetDevicePropDescEx to get full descriptor including current value
+        const response = await this.send('GetDevicePropDescEx', {
             DevicePropCode: property.code,
         })
 
         if (!response.data) {
-            throw new Error('No data received from GetDevicePropValueEx')
+            throw new Error('No data received from GetDevicePropDescEx')
         }
 
-        const codec = this.resolveCodec(property.codec as any)
-        const result = codec.decode(response.data)
-
-        return result.value as PropertyValue<N, typeof standardPropertyDefinitions>
+        return response.data
     }
 
     /**

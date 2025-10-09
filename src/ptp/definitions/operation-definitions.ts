@@ -3,6 +3,7 @@ import { baseCodecs, ArrayCodec } from '@ptp/types/codec'
 import { deviceInfoCodec } from '@ptp/datasets/device-info-dataset'
 import { objectInfoCodec } from '@ptp/datasets/object-info-dataset'
 import { storageInfoCodec } from '@ptp/datasets/storage-info-dataset'
+import { devicePropDescCodec } from '@ptp/datasets/device-prop-desc-dataset'
 
 export const operationDefinitions = [
     {
@@ -357,6 +358,7 @@ export const operationDefinitions = [
         name: 'GetDevicePropDesc',
         description: 'Gets device property descriptor',
         dataDirection: 'out',
+        dataCodec: devicePropDescCodec,
         operationParameters: [
             {
                 name: 'DevicePropCode',
