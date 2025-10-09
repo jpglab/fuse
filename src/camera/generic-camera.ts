@@ -113,8 +113,8 @@ export class GenericCamera<
         this.formatDefinitions = formatDefinitions
         this.baseCodecs = createBaseCodecs(transport.isLittleEndian())
 
-        if (this.transport.onEvent) {
-            this.transport.onEvent(this.handleEvent.bind(this))
+        if (this.transport.on) {
+            this.transport.on(this.handleEvent.bind(this))
         }
     }
 

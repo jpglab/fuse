@@ -19,9 +19,10 @@ export interface PTPEvent {
 export interface TransportInterface {
     /**
      * Discover available devices for this transport
+     * @param criteria - Optional criteria to filter devices (vendorId, productId, serialNumber)
      * @returns List of available device descriptors
      */
-    discover(): Promise<DeviceDescriptor[]>
+    discover(criteria?: Partial<DeviceDescriptor>): Promise<DeviceDescriptor[]>
 
     /**
      * Connect to a device
@@ -73,44 +74,14 @@ export interface TransportInterface {
     isLittleEndian(): boolean
 
     /**
-     * Get connected device information
-     */
-    getDeviceInfo?(): DeviceDescriptor | null
-
-    /**
      * Register handler for PTP events
      * @param handler - Callback to handle parsed event data
      */
-    onEvent?(handler: (event: PTPEvent) => void): void
+    on?(handler: (event: PTPEvent) => void): void
 
     /**
      * Unregister event handler
      * @param handler - Callback to remove
      */
-    offEvent?(handler: (event: PTPEvent) => void): void
-
-    /**
-     * Start listening for events
-     */
-    startEventListening?(): Promise<void>
-
-    /**
-     * Stop listening for events
-     */
-    stopEventListening?(): Promise<void>
-
-    /**
-     * Get device status (USB-specific)
-     */
-    getDeviceStatus?(): Promise<{ code: number; parameters: number[] }>
-
-    /**
-     * Cancel a request by transaction ID (USB-specific)
-     */
-    cancelRequest?(transactionId: number): Promise<void>
-
-    /**
-     * Get extended event data (USB-specific)
-     */
-    getExtendedEventData?(bufferSize?: number): Promise<any>
+    off?(handler: (event: PTPEvent) => void): void
 }

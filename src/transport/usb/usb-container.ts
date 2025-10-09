@@ -1,3 +1,6 @@
+/**
+ * USB Container types
+ */
 export enum USBContainerType {
     COMMAND = 1,
     DATA = 2,
@@ -5,6 +8,26 @@ export enum USBContainerType {
     EVENT = 4,
 }
 
+/**
+ * Convert Uint8Array to Buffer
+ */
+export function toBuffer(data: Uint8Array): Buffer {
+    return Buffer.from(data)
+}
+
+/**
+ * Convert Buffer or any array-like to Uint8Array
+ */
+export function toUint8Array(data: Buffer | ArrayBuffer | ArrayLike<number>): Uint8Array {
+    if (data instanceof Uint8Array) {
+        return data
+    }
+    return new Uint8Array(data)
+}
+
+/**
+ * USB Container structure
+ */
 export interface USBContainer {
     length: number
     type: USBContainerType
@@ -13,6 +36,10 @@ export interface USBContainer {
     payload: Uint8Array
 }
 
+/**
+ * USB Container Builder
+ * Handles building and parsing PTP containers for USB transport
+ */
 export class USBContainerBuilder {
     static buildCommand(operationCode: number, transactionId: number, parameters: Uint8Array[]): Uint8Array {
         const payloadSize = parameters.reduce((sum, param) => sum + param.length, 0)
@@ -51,9 +78,6 @@ export class USBContainerBuilder {
 
     /**
      * Parse a container with optional type validation
-     * @param data - Container data
-     * @param expectedType - Optional expected container type (validates if provided)
-     * @returns Parsed container
      */
     static parseContainer(data: Uint8Array, expectedType?: USBContainerType): USBContainer {
         if (data.length < 12) {

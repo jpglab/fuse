@@ -41,37 +41,3 @@ export interface DeviceDescriptor {
     // Raw device object (platform-specific, e.g., USBDevice)
     device?: unknown
 }
-
-/**
- * Device search criteria for finding devices
- */
-export interface DeviceSearchCriteria {
-    vendorId?: number
-    productId?: number
-    class?: number
-    subclass?: number
-    protocol?: number
-    serialNumber?: string
-}
-
-/**
- * Device finder interface for locating devices
- */
-export interface DeviceFinderInterface {
-    /**
-     * Find devices matching criteria
-     * @param criteria - Search criteria
-     */
-    findDevices(criteria: DeviceSearchCriteria): Promise<DeviceDescriptor[]>
-
-    /**
-     * Request device access
-     * @param criteria - Device selection criteria
-     */
-    requestDevice(criteria: DeviceSearchCriteria): Promise<DeviceDescriptor>
-
-    /**
-     * Get list of all available devices
-     */
-    getAllDevices(): Promise<DeviceDescriptor[]>
-}
