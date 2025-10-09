@@ -11,6 +11,7 @@ import { propertyDefinitions as standardPropertyDefinitions } from '@ptp/definit
 import { responseDefinitions as standardResponseDefinitions } from '@ptp/definitions/response-definitions'
 import { formatDefinitions as standardFormatDefinitions } from '@ptp/definitions/format-definitions'
 import { Logger } from '@core/logger'
+import { VendorIDs } from '@ptp/definitions/vendor-ids'
 
 // Merge Nikon definitions with standard PTP definitions
 const mergedOperationDefinitions = [...standardOperationDefinitions, ...nikonOperationDefinitions] as const
@@ -21,6 +22,8 @@ export class NikonCamera extends GenericCamera<
     typeof standardResponseDefinitions,
     typeof standardFormatDefinitions
 > {
+    vendorId = VendorIDs.NIKON
+
     constructor(transport: TransportInterface, logger: Logger<typeof mergedOperationDefinitions>) {
         super(
             transport,
@@ -88,5 +91,4 @@ export class NikonCamera extends GenericCamera<
             encodedValue
         )
     }
-
 }

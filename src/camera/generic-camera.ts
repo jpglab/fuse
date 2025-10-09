@@ -88,6 +88,7 @@ export class GenericCamera<
 > {
     private emitter = new EventEmitter()
     public sessionId: number | null = null
+    public vendorId: number | null = null
     private transactionId = 0
     public transport: TransportInterface
     protected operationDefinitions: Ops
@@ -119,7 +120,7 @@ export class GenericCamera<
     }
 
     async connect(deviceIdentifier?: DeviceDescriptor): Promise<void> {
-        await this.transport.connect(deviceIdentifier)
+        await this.transport.connect({ ...deviceIdentifier, ...(this.vendorId && { vendorId: this.vendorId }) })
 
         // Try to close any existing session first (use sessionId 1 as a fallback)
         // Ignore errors since we don't know if a session is actually open

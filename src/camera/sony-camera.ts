@@ -36,6 +36,7 @@ const SDIO_AUTH_PHASES = {
 } as const
 
 import { Logger } from '@core/logger'
+import { VendorIDs } from '@ptp/definitions/vendor-ids'
 
 const SONY_CAPTURED_IMAGE_OBJECT_HANDLE = 0xffffc001
 const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
@@ -47,6 +48,7 @@ export class SonyCamera extends GenericCamera<
     typeof mergedFormatDefinitions
 > {
     private liveViewEnabled = false
+    vendorId = VendorIDs.SONY
 
     constructor(transport: TransportInterface, logger: Logger<typeof mergedOperationDefinitions>) {
         super(
@@ -60,7 +62,7 @@ export class SonyCamera extends GenericCamera<
     }
 
     async connect(deviceIdentifier?: DeviceDescriptor): Promise<void> {
-        await this.transport.connect(deviceIdentifier)
+        await this.transport.connect({ ...deviceIdentifier, vendorId: this.vendorId })
 
         this.sessionId = Math.floor(Math.random() * 0xffffffff)
 

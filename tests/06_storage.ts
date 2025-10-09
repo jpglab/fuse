@@ -20,46 +20,49 @@ const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
 async function main() {
     await camera.connect()
 
-    // // test sony ext-device-prop-info dataset
-    // const iso = await camera.get('Iso')
-    // console.log('ISO:', iso)
-    // const shutterSpeed = await camera.get('ShutterSpeed')
-    // console.log('Shutter Speed:', shutterSpeed)
-    // const aperture = await camera.get('Aperture')
-    // console.log('Exposure:', aperture)
 
-    // // test device-info dataset
-    // const deviceInfo = await camera.send('GetDeviceInfo', {})
-    // console.log('Device Info:', deviceInfo)
+    camera.on('ObjectAdded', (event) => {
+        console.log('ObjectAdded event:', event)
+    })
 
-    // // enable live view
-    // await camera.set('SetLiveViewEnable', 'ENABLE')
+    camera.on('CaptureComplete', (event) => {
+        console.log('CaptureComplete event:', event)
+    })
+    camera.on('StoreAdded', (event) => {
+        console.log('StoreAdded event:', event)
+    })
+    camera.on('StoreRemoved', (event) => {
+        console.log('StoreRemoved event:', event)
+    })
 
-    // // test object-info dataset
-    // const objectInfo = await camera.send('GetObjectInfo', {
-    //     // this is the liveview dataset
-    //     ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
-    // })
+    // test sony ext-device-prop-info dataset
+    const iso = await camera.get('Iso')
+    const shutterSpeed = await camera.get('ShutterSpeed')
+    const aperture = await camera.get('Aperture')
+
+    // test device-info dataset
+    const deviceInfo = await camera.send('GetDeviceInfo', {})
+
+    // enable live view
+    await camera.set('SetLiveViewEnable', 'ENABLE')
+
     await camera.send('SDIO_SetContentsTransferMode', {
         ContentsSelectType: 'HOST',
         TransferMode: 'ENABLE',
         AdditionalInformation: 'NONE',
     })
-
-    // sleep for 1 second
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    while ((await camera.get('ContentTransferEnable')) === 'DISABLE') {
+        console.log('waiting...')
+        await new Promise(resolve => setTimeout(resolve, 10))
+    }
 
     const storageIds = await camera.send('GetStorageIDs', {})
-
-    // sleep for 1 second
-    await new Promise(resolve => setTimeout(resolve, 1000))
 
     // test storage-info dataset
     const storageInfo = await camera.send('GetStorageInfo', {
         StorageID: storageIds.data[0],
     })
-
-    new Promise(resolve => setTimeout(resolve, 1000))
 
     const objectIds = await camera.send('GetObjectHandles', {
         StorageID: storageIds.data[0],
@@ -78,29 +81,62 @@ async function main() {
         .map(Number)
         .filter(id => objectInfos[id].associationType === 0)
 
-    // Try with just the first object to debug
-    const firstObjectId = nonAssociationObjectIds[0]
-    console.log(`Attempting to get object ${firstObjectId.toString(16)}, size: ${objectInfos[firstObjectId].objectCompressedSize} bytes`)
+    // Import fs and path once
+    const fs = await import('fs')
+    const path = await import('path')
 
-    await camera.send('SDIO_SetContentsTransferMode', {
-        ContentsSelectType: 'HOST',
-        TransferMode: 'DISABLE',
-        AdditionalInformation: 'NONE',
-    })
+    // Ensure captured-images directory exists
+    const capturedImagesDir = '/Users/kevinschaich/repositories/jpglab/fuse/captured_images'
+    if (!fs.existsSync(capturedImagesDir)) {
+        fs.mkdirSync(capturedImagesDir, { recursive: true })
+    }
 
+    // Download all files
+    for (const objectId of nonAssociationObjectIds) {
+        const objectSize = objectInfos[objectId].objectCompressedSize
+        const filename = objectInfos[objectId].filename
+        const outputPath = path.join(capturedImagesDir, filename)
 
-    try {
-        const objectData = await camera.send(
-            'GetObject',
-            {
-                ObjectHandle: firstObjectId,
-            },
-            undefined
-            // Not passing maxDataLength - use default and chunk
-        )
-        console.log('Object retrieved successfully:', objectData.code)
-    } catch (error) {
-        console.error('Failed to get object:', error)
+        // Use Sony's SDIO_GetPartialLargeObject to retrieve the file in chunks
+        const CHUNK_SIZE = 1024 * 1024 * 10 // 10MB chunks
+        const chunks: Uint8Array[] = []
+        let offset = 0
+
+        while (offset < objectSize) {
+            const bytesToRead = Math.min(CHUNK_SIZE, objectSize - offset)
+
+            // Split 64-bit offset into two 32-bit values
+            const offsetLower = offset & 0xffffffff
+            const offsetUpper = Math.floor(offset / 0x100000000) // Divide by 2^32 to get upper 32 bits
+
+            const chunkResponse = await camera.send(
+                'SDIO_GetPartialLargeObject',
+                {
+                    ObjectHandle: objectId,
+                    OffsetLower: offsetLower,
+                    OffsetUpper: offsetUpper,
+                    MaxBytes: bytesToRead,
+                },
+                undefined,
+                // Add 12 bytes for PTP container header (length + type + code + transactionId)
+                offset === 0 ? objectSize + 12 : bytesToRead + 12
+            )
+
+            chunks.push(chunkResponse.data)
+            offset += chunkResponse.data.length
+        }
+
+        // Combine all chunks
+        const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const completeFile = new Uint8Array(totalBytes)
+        let writeOffset = 0
+        for (const chunk of chunks) {
+            completeFile.set(chunk, writeOffset)
+            writeOffset += chunk.length
+        }
+
+        // Write file
+        fs.writeFileSync(outputPath, completeFile)
     }
 
     await camera.send('SDIO_SetContentsTransferMode', {
@@ -110,11 +146,6 @@ async function main() {
     })
 
     await camera.disconnect()
-
-    // Give logger time to finish rendering before cleanup
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    console.log('Storage IDs:', storageIds)
 }
 
-main().catch(console.error)
+main()
