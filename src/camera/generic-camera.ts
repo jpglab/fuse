@@ -122,14 +122,13 @@ export class GenericCamera<
     async connect(deviceIdentifier?: DeviceDescriptor): Promise<void> {
         await this.transport.connect({ ...deviceIdentifier, ...(this.vendorId && { vendorId: this.vendorId }) })
 
-        // Try to close any existing session first (use sessionId 1 as a fallback)
-        // Ignore errors since we don't know if a session is actually open
-        this.sessionId = 1
-        await (this.send as any)('CloseSession', {})
-
-        // Now open a new session
         this.sessionId = Math.floor(Math.random() * 0xffffffff)
-        await (this.send as any)('OpenSession', { SessionID: this.sessionId })
+        const openResult = await this.send('OpenSession', { SessionID: this.sessionId })
+
+        if (openResult.code === 0x201e) {
+            await this.send('CloseSession', {})
+            const retryResult = await this.send('OpenSession', { SessionID: this.sessionId })
+        }
     }
 
     async disconnect(): Promise<void> {
@@ -181,8 +180,8 @@ export class GenericCamera<
             encodedParams.push(codec.encode(value))
         }
 
-        // Check if this is a partial object operation (GetPartialObject or SDIO_GetPartialLargeObject)
-        const isPartialObjectOp = operationName === 'GetPartialObject' || operationName === 'SDIO_GetPartialLargeObject'
+        // Check if this is a partial object operation (GetPartialObject or vendor extensions)
+        const isPartialObjectOp = operationName === 'GetPartialObject' || operationName === 'SDIO_GetPartialLargeObject' || operationName === 'GetPartialObjectEx'
         const objectHandle = isPartialObjectOp ? (params as any).ObjectHandle : null
 
         // Check if we have an active transfer for this object

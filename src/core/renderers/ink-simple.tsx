@@ -6,6 +6,7 @@ import { Logger, Log, PTPOperationLog, USBTransferLog, PTPTransferLog, ConsoleLo
 import { responseDefinitions } from '../../ptp/definitions/response-definitions'
 import { formatJSON } from './formatters/compact-formatter'
 import { formatBytes } from './formatters/bytes-formatter'
+import { safeStringify } from './formatters/safe-stringify'
 
 interface InkSimpleLoggerProps<Ops extends readonly OperationDefinition[]> {
     logger: Logger<Ops>
@@ -90,7 +91,7 @@ export function InkSimpleLogger<Ops extends readonly OperationDefinition[]>({
                     const color = colorMap[consoleLog.consoleLevel]
                     const levelLabel = consoleLog.consoleLevel === 'log' ? 'Debug' : consoleLog.consoleLevel.charAt(0).toUpperCase() + consoleLog.consoleLevel.slice(1)
                     const formatted = consoleLog.args
-                        .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+                        .map(arg => (typeof arg === 'object' ? safeStringify(arg) : String(arg)))
                         .join(' ')
 
                     // Format timestamp
@@ -195,7 +196,7 @@ export function InkSimpleLogger<Ops extends readonly OperationDefinition[]>({
                                 // Format numeric values as hex
                                 const formattedValue = typeof value === 'number'
                                     ? `0x${(value as number).toString(16)}`
-                                    : JSON.stringify(value)
+                                    : safeStringify(value)
                                 return (
                                     <Text key={key}>
                                         <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>    {key} set to {formattedValue}

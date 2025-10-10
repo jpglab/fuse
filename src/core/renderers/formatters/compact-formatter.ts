@@ -1,3 +1,5 @@
+import { safeStringify } from './safe-stringify'
+
 const MAX_LINE_WIDTH = 100
 
 /**
@@ -8,7 +10,7 @@ export function formatJSON(val: any, indent: number = 0): string[] {
     const baseIndent = '  '.repeat(indent)
 
     if (val === null || val === undefined) {
-        return [baseIndent + JSON.stringify(val)]
+        return [baseIndent + safeStringify(val)]
     }
 
     if (typeof val === 'bigint') {
@@ -16,7 +18,7 @@ export function formatJSON(val: any, indent: number = 0): string[] {
     }
 
     if (typeof val !== 'object') {
-        return [baseIndent + JSON.stringify(val)]
+        return [baseIndent + safeStringify(val)]
     }
 
     if (Array.isArray(val)) {
@@ -28,8 +30,8 @@ export function formatJSON(val: any, indent: number = 0): string[] {
         const items = val.map(v => {
             if (typeof v === 'bigint') return v.toString()
             if (typeof v === 'number') return `0x${v.toString(16)}`
-            if (typeof v === 'object' && v !== null) return JSON.stringify(v)
-            return JSON.stringify(v)
+            if (typeof v === 'object' && v !== null) return safeStringify(v)
+            return safeStringify(v)
         })
 
         // Try to fit on one line
@@ -93,8 +95,8 @@ export function formatJSON(val: any, indent: number = 0): string[] {
                 const items = value.map(v => {
                     if (typeof v === 'bigint') return v.toString()
                     if (typeof v === 'number') return `0x${v.toString(16)}`
-                    if (typeof v === 'object' && v !== null) return JSON.stringify(v)
-                    return JSON.stringify(v)
+                    if (typeof v === 'object' && v !== null) return safeStringify(v)
+                    return safeStringify(v)
                 })
 
                 // Try to fit on one line
@@ -151,7 +153,7 @@ export function formatJSON(val: any, indent: number = 0): string[] {
             } else if (typeof value === 'number') {
                 formatted = `0x${value.toString(16)}`
             } else {
-                formatted = JSON.stringify(value)
+                formatted = safeStringify(value)
             }
             lines.push(`${baseIndent}  "${key}": ${formatted}${comma}`)
         }

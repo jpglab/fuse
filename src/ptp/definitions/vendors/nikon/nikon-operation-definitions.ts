@@ -4,6 +4,58 @@ import { devicePropDescCodecEx } from '@ptp/datasets/device-prop-desc-dataset'
 
 export const nikonOperationDefinitions = [
     {
+        code: 0x9431,
+        name: 'GetPartialObjectEx',
+        description: 'Get partial object with 64-bit offset support (extension of GetPartialObject)',
+        dataDirection: 'out',
+        operationParameters: [
+            {
+                name: 'ObjectHandle',
+                description: 'Object handle',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+            {
+                name: 'OffsetLower',
+                description: 'Offset in bytes (lower 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+            {
+                name: 'OffsetUpper',
+                description: 'Offset in bytes (upper 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+            {
+                name: 'MaxSizeLower',
+                description: 'Maximum bytes to return (lower 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+            {
+                name: 'MaxSizeUpper',
+                description: 'Maximum bytes to return (upper 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+        ],
+        responseParameters: [
+            {
+                name: 'ActualBytesSentLower',
+                description: 'Actual bytes sent (lower 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+            {
+                name: 'ActualBytesSentUpper',
+                description: 'Actual bytes sent (upper 32 bits)',
+                codec: baseCodecs.uint32,
+                required: true,
+            },
+        ],
+    },
+    {
         code: 0x943a,
         name: 'GetDevicePropDescEx',
         description: 'Get device property descriptor (4-byte extension)',
