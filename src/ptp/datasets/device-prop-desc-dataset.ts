@@ -2,14 +2,14 @@ import { CodecDefinition, baseCodecs, CustomCodec } from '@ptp/types/codec'
 import { DatatypeCode } from '@ptp/types/datatype'
 import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
 import { propertyDefinitions as standardPropertyDefinitions } from '@ptp/definitions/property-definitions'
+import { VariableValueCodec } from '@ptp/datasets/codecs/variable-value-codec'
 
 export interface DevicePropDesc {
     devicePropertyCode: number
     devicePropertyName: string
     devicePropertyDescription: string
     dataType: DatatypeCode
-    getSet: number
-    writable: boolean
+    getSet: 'GET' | 'GET_SET'
     factoryDefaultValue: any
     currentValueRaw: any
     currentValueBytes: Uint8Array
@@ -23,54 +23,8 @@ export interface DevicePropDesc {
     numberOfValues?: number
     supportedValuesRaw?: any[]
     supportedValuesDecoded?: any[]
-}
-
-class VariableValueCodec extends CustomCodec<{ value: any; rawBytes: Uint8Array }> {
-    readonly type = 'custom' as const
-
-    constructor(private dataType: DatatypeCode) {
-        super()
-    }
-
-    encode(value: { value: any; rawBytes: Uint8Array } | any): Uint8Array {
-        // If already has rawBytes, use them
-        if (value && typeof value === 'object' && 'rawBytes' in value) {
-            return value.rawBytes
-        }
-
-        // Otherwise encode the raw value
-        const datatypeDefinition = getDatatypeByCode(this.dataType)
-        if (!datatypeDefinition) {
-            throw new Error(`Unknown datatype: 0x${this.dataType.toString(16)}`)
-        }
-        if (!datatypeDefinition.codec) {
-            throw new Error(`Datatype ${this.dataType} has no codec`)
-        }
-
-        const codec = this.resolveBaseCodec(datatypeDefinition.codec)
-        return codec.encode(value)
-    }
-
-    decode(buffer: Uint8Array, offset = 0): { value: { value: any; rawBytes: Uint8Array }; bytesRead: number } {
-        const datatypeDefinition = getDatatypeByCode(this.dataType)
-        if (!datatypeDefinition) {
-            throw new Error(`Unknown datatype: 0x${this.dataType.toString(16)}`)
-        }
-        if (!datatypeDefinition.codec) {
-            throw new Error(`Datatype ${this.dataType} has no codec`)
-        }
-
-        const codec = this.resolveBaseCodec(datatypeDefinition.codec)
-        const result = codec.decode(buffer, offset)
-        const rawBytes = buffer.slice(offset, offset + result.bytesRead)
-
-        return {
-            value: {
-                value: result.value,
-                rawBytes,
-            },
-            bytesRead: result.bytesRead,
-        }
+    vendorExtensions?: {
+        [key: string]: any
     }
 }
 
@@ -237,8 +191,7 @@ export class DevicePropDescCodec extends CustomCodec<DevicePropDesc> {
                 devicePropertyName,
                 devicePropertyDescription,
                 dataType,
-                getSet,
-                writable: getSet === 0x01,
+                getSet: getSet === 0x01 ? 'GET_SET' : 'GET',
                 factoryDefaultValue,
                 currentValueRaw,
                 currentValueBytes,
@@ -261,15 +214,3 @@ export const devicePropDescCodec = new DevicePropDescCodec(false)
 
 // Extended codec for 4-byte property codes (Nikon extended)
 export const devicePropDescCodecEx = new DevicePropDescCodec(true)
-
-export function parseDevicePropDesc(
-    data: Uint8Array,
-    use4ByteCode: boolean = false,
-    baseCodecs?: ReturnType<typeof import('@ptp/types/codec').createBaseCodecs>
-): DevicePropDesc {
-    const codec = new DevicePropDescCodec(use4ByteCode)
-    if (baseCodecs) {
-        codec.baseCodecs = baseCodecs
-    }
-    return codec.decode(data).value
-}
