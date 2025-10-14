@@ -1,4 +1,4 @@
-import { CustomCodec, type PTPRegistry, Uint8Codec, Uint16Codec, Uint32Codec, Int32Codec } from '@ptp/types/codec'
+import { CustomCodec, Int32Codec, type PTPRegistry, Uint16Codec, Uint32Codec, Uint8Codec } from '@ptp/types/codec'
 
 /**
  * Nikon LiveViewObject DataSet (with version)

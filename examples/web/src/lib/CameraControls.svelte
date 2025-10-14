@@ -1,11 +1,10 @@
 <script lang="ts">
-    import type { SonyCamera } from '@camera/sony-camera'
+    import type { Camera } from '@camera/index'
     import { store } from './store.svelte'
     import { cameraQueue } from './queue'
-    import { Aperture, Iso, ShutterSpeed } from '@ptp/definitions/vendors/sony/sony-property-definitions'
 
     interface Props {
-        camera: SonyCamera
+        camera: Camera
     }
 
     const { camera }: Props = $props()
@@ -127,17 +126,17 @@
 
     const onApertureChange = async (event: Event) => {
         const target = event.target as HTMLSelectElement
-        await cameraQueue.push(async () => await camera.set(Aperture, target.value))
+        await cameraQueue.push(async () => await camera.setAperture(target.value))
     }
 
     const onShutterSpeedChange = async (event: Event) => {
         const target = event.target as HTMLSelectElement
-        await cameraQueue.push(async () => await camera.set(ShutterSpeed, target.value))
+        await cameraQueue.push(async () => await camera.setShutterSpeed(target.value))
     }
 
     const onISOChange = async (event: Event) => {
         const target = event.target as HTMLSelectElement
-        await cameraQueue.push(async () => await camera.set(Iso, target.value))
+        await cameraQueue.push(async () => await camera.setIso(target.value))
     }
 </script>
 

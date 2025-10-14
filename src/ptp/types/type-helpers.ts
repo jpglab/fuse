@@ -15,11 +15,11 @@ type BuildParamObject<Params extends readonly any[], Acc = {}> = Params extends 
             : BuildParamObject<Tail, Acc>
       : Acc
 
-export type OperationParams<Op extends { operationParameters: readonly any[] }> = Op['operationParameters'] extends readonly []
-    ? Record<string, never>
-    : BuildParamObject<Op['operationParameters']>
+export type OperationParams<Op extends { operationParameters: readonly any[] }> =
+    Op['operationParameters'] extends readonly [] ? Record<string, never> : BuildParamObject<Op['operationParameters']>
 
-export type OperationResponse<Op> =
-    Op extends { dataCodec: infer C } ? { code: number; data: CodecType<C> } :
-    Op extends { dataDirection: 'out' } ? { code: number; data: Uint8Array } :
-    { code: number }
+export type OperationResponse<Op> = Op extends { dataCodec: infer C }
+    ? { code: number; data: CodecType<C> }
+    : Op extends { dataDirection: 'out' }
+      ? { code: number; data: Uint8Array }
+      : { code: number }

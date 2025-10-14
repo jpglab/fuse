@@ -1,9 +1,9 @@
-import { OperationDefinition } from '@ptp/types/operation'
-import { baseCodecs, ArrayCodec, type PTPRegistry } from '@ptp/types/codec'
 import { DeviceInfoCodec } from '@ptp/datasets/device-info-dataset'
+import { DevicePropDescCodec } from '@ptp/datasets/device-prop-desc-dataset'
 import { ObjectInfoCodec } from '@ptp/datasets/object-info-dataset'
 import { StorageInfoCodec } from '@ptp/datasets/storage-info-dataset'
-import { DevicePropDescCodec } from '@ptp/datasets/device-prop-desc-dataset'
+import { ArrayCodec, baseCodecs, type PTPRegistry } from '@ptp/types/codec'
+import { OperationDefinition } from '@ptp/types/operation'
 
 export const Undefined = {
     code: 0x1000,
@@ -820,4 +820,4 @@ export const genericOperationRegistry = {
     GetStream,
 } as const satisfies { [key: string]: OperationDefinition }
 
-export type GenericOperationDef = typeof genericOperationRegistry[keyof typeof genericOperationRegistry]
+export type GenericOperationDef = (typeof genericOperationRegistry)[keyof typeof genericOperationRegistry]

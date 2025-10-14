@@ -1,4 +1,4 @@
-import { CustomCodec, type PTPRegistry } from '@ptp/types/codec'
+import { CustomCodec } from '@ptp/types/codec'
 
 export interface ObjectInfo {
     storageID: number
@@ -134,7 +134,8 @@ export class ObjectInfoCodec extends CustomCodec<ObjectInfo> {
         const objectFormatDecoded = objectFormatDef?.name || `Unknown_0x${objectFormat.value.toString(16)}`
 
         const thumbFormatDef = Object.values(this.registry.formats).find((f: any) => f.code === thumbFormat.value)
-        const thumbFormatDecoded = thumbFormatDef?.name || (thumbFormat.value === 0 ? 'None' : `Unknown_0x${thumbFormat.value.toString(16)}`)
+        const thumbFormatDecoded =
+            thumbFormatDef?.name || (thumbFormat.value === 0 ? 'None' : `Unknown_0x${thumbFormat.value.toString(16)}`)
 
         return {
             value: {
@@ -164,4 +165,3 @@ export class ObjectInfoCodec extends CustomCodec<ObjectInfo> {
         }
     }
 }
-

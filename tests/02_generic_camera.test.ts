@@ -1,12 +1,12 @@
+import { Logger } from '@core/logger'
+import { formatRegistry } from '@ptp/definitions/format-definitions'
 import { genericOperationRegistry } from '@ptp/definitions/operation-definitions'
 import { genericPropertyRegistry } from '@ptp/definitions/property-definitions'
 import { responseRegistry } from '@ptp/definitions/response-definitions'
-import { formatRegistry } from '@ptp/definitions/format-definitions'
-import { describe, it, expect, afterAll } from 'vitest'
-import { GenericCamera } from '../src/camera/generic-camera'
-import { TransportFactory } from '@transport/transport-factory'
 import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { Logger } from '@core/logger'
+import { TransportFactory } from '@transport/transport-factory'
+import { afterAll, describe, expect, it } from 'vitest'
+import { GenericCamera } from '../src/camera/generic-camera'
 
 const operationDefinitions = Object.values(genericOperationRegistry)
 const propertyDefinitions = Object.values(genericPropertyRegistry)
@@ -23,7 +23,7 @@ describe('GenericCamera', () => {
             try {
                 await Promise.race([
                     camera.disconnect(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000)),
                 ])
             } catch (e) {
                 // Ignore disconnect errors

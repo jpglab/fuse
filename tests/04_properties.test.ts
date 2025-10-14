@@ -1,10 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { SonyCamera } from '../src/camera/sony-camera'
-import { TransportFactory } from '@transport/transport-factory'
 import { Logger } from '@core/logger'
 import { VendorIDs } from '@ptp/definitions/vendor-ids'
-import * as Props from '@ptp/definitions/property-definitions'
 import * as SonyProps from '@ptp/definitions/vendors/sony/sony-property-definitions'
+import { TransportFactory } from '@transport/transport-factory'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { SonyCamera } from '../src/camera/sony-camera'
 
 describe('Sony Property Formats', () => {
     let camera: SonyCamera
@@ -27,7 +26,7 @@ describe('Sony Property Formats', () => {
             try {
                 await Promise.race([
                     camera.disconnect(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000)),
                 ])
                 console.log('✅ Camera disconnected')
             } catch (e: any) {

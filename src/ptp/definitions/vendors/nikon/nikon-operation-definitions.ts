@@ -1,7 +1,25 @@
-import { OperationDefinition } from '@ptp/types/operation'
-import { baseCodecs, type PTPRegistry } from '@ptp/types/codec'
 import { DevicePropDescCodec } from '@ptp/datasets/device-prop-desc-dataset'
 import { NikonLiveViewDatasetCodec } from '@ptp/datasets/vendors/nikon/nikon-live-view-dataset'
+import { baseCodecs, EnumCodec } from '@ptp/types/codec'
+import { OperationDefinition } from '@ptp/types/operation'
+import { PropertyDefinition } from '@ptp/types/property'
+import { getDatatypeByName } from '@ptp/definitions/datatype-definitions'
+
+const UINT8 = getDatatypeByName('UINT8')!.code
+
+// Nikon-specific properties
+export const ISOAutoControl = {
+    code: 0xd054,
+    name: 'ISOAutoControl',
+    description: 'ISO sensitivity settings – Auto ISO sensitivity control',
+    datatype: UINT8,
+    access: 'GetSet',
+    codec: (registry) =>
+        new EnumCodec(registry, [
+            { value: 0, name: 'OFF', description: 'Auto ISO control disabled' },
+            { value: 1, name: 'ON', description: 'Auto ISO control enabled' },
+        ], registry.codecs.uint8),
+} as const satisfies PropertyDefinition
 
 export const GetPartialObjectEx = {
     code: 0x9431,
@@ -61,7 +79,7 @@ export const GetDevicePropDescEx = {
     name: 'GetDevicePropDescEx',
     description: 'Get device property descriptor (4-byte extension)',
     dataDirection: 'out',
-    dataCodec: (registry) => new DevicePropDescCodec(registry, true),
+    dataCodec: registry => new DevicePropDescCodec(registry, true),
     operationParameters: [
         {
             name: 'DevicePropCode',
@@ -137,7 +155,7 @@ export const GetLiveViewImageEx = {
     name: 'GetLiveViewImageEx',
     description: 'Get live view image with metadata (LiveViewObject with version)',
     dataDirection: 'out',
-    dataCodec: (registry) => new NikonLiveViewDatasetCodec(registry),
+    dataCodec: registry => new NikonLiveViewDatasetCodec(registry),
     operationParameters: [],
     responseParameters: [],
 } as const satisfies OperationDefinition
@@ -153,4 +171,4 @@ export const nikonOperationRegistry = {
     GetLiveViewImageEx,
 } as const satisfies { [key: string]: OperationDefinition }
 
-export type NikonOperationDef = typeof nikonOperationRegistry[keyof typeof nikonOperationRegistry]
+export type NikonOperationDef = (typeof nikonOperationRegistry)[keyof typeof nikonOperationRegistry]

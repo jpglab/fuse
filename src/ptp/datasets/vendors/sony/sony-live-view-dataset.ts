@@ -91,7 +91,7 @@ export class LiveViewDatasetCodec extends CustomCodec<LiveViewDataset> {
     }
 }
 
-
 export function parseLiveViewDataset(data: Uint8Array, registry: PTPRegistry): LiveViewDataset {
-    const codec = new LiveViewDatasetCodec(registry); return codec.decode(data).value
+    const codec = new LiveViewDatasetCodec(registry)
+    return codec.decode(data).value
 }

@@ -1,6 +1,6 @@
+import { NikonCamera } from '@camera/nikon-camera'
 import { Logger } from '@core/logger'
 import { USBTransport } from '@transport/usb/usb-transport'
-import { NikonCamera } from '@camera/nikon-camera'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -27,7 +27,7 @@ async function main() {
     await camera.startLiveView()
 
     console.log('Capturing single live view frame...')
-    const frame = await camera.streamLiveView()
+    const frame = await camera.captureLiveView()
 
     console.log(`Received frame: ${frame.length} bytes`)
 

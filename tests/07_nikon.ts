@@ -1,8 +1,8 @@
 import { Logger } from '@core/logger'
-import { USBTransport } from '@transport/usb/usb-transport'
 import * as Ops from '@ptp/definitions/operation-definitions'
 import * as Props from '@ptp/definitions/property-definitions'
 import * as NikonOps from '@ptp/definitions/vendors/nikon/nikon-operation-definitions'
+import { USBTransport } from '@transport/usb/usb-transport'
 
 import { NikonCamera } from '@camera/nikon-camera'
 

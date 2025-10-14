@@ -1,4 +1,4 @@
-import { CustomCodec, ArrayCodec, type PTPRegistry } from '@ptp/types/codec'
+import { ArrayCodec, CustomCodec } from '@ptp/types/codec'
 
 export interface DeviceInfo {
     standardVersion: number
@@ -157,4 +157,3 @@ export class DeviceInfoCodec extends CustomCodec<DeviceInfo> {
         }
     }
 }
-

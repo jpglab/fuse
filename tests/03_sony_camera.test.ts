@@ -1,12 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { SonyCamera } from '../src/camera/sony-camera'
-import { TransportFactory } from '@transport/transport-factory'
 import { Logger } from '@core/logger'
+import { VendorIDs } from '@ptp/definitions/vendor-ids'
+import * as SonyProps from '@ptp/definitions/vendors/sony/sony-property-definitions'
+import { TransportFactory } from '@transport/transport-factory'
 import * as fs from 'fs'
 import * as path from 'path'
-import { VendorIDs } from '@ptp/definitions/vendor-ids'
-import * as Props from '@ptp/definitions/property-definitions'
-import * as SonyProps from '@ptp/definitions/vendors/sony/sony-property-definitions'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { SonyCamera } from '../src/camera/sony-camera'
 
 describe('SonyCamera', () => {
     let transport: any
@@ -38,7 +37,7 @@ describe('SonyCamera', () => {
             try {
                 await Promise.race([
                     camera.disconnect(),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000))
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Disconnect timeout')), 2000)),
                 ])
                 console.log('✅ Camera disconnected')
             } catch (e: any) {
@@ -112,7 +111,7 @@ describe('SonyCamera', () => {
     }, 2000)
 
     it('should stream live view', async () => {
-        const data = await camera.streamLiveView()
+        const data = await camera.captureLiveView()
 
         expect(data).toBeInstanceOf(Uint8Array)
         expect(data.length).toBeGreaterThan(0)

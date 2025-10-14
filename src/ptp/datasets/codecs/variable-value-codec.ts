@@ -1,6 +1,6 @@
-import { CustomCodec, type PTPRegistry, CodecInstance } from '@ptp/types/codec'
-import { DatatypeCode } from '@ptp/types/datatype'
 import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
+import { CustomCodec, type PTPRegistry } from '@ptp/types/codec'
+import { DatatypeCode } from '@ptp/types/datatype'
 
 export interface VariableValue {
     value: number | bigint | string
@@ -12,7 +12,10 @@ export interface VariableValue {
  * Used by device property descriptors to encode/decode values of different types
  */
 export class VariableValueCodec extends CustomCodec<VariableValue> {
-    constructor(registry: PTPRegistry, private dataType: DatatypeCode) {
+    constructor(
+        registry: PTPRegistry,
+        private dataType: DatatypeCode
+    ) {
         super(registry)
     }
 
@@ -32,9 +35,10 @@ export class VariableValueCodec extends CustomCodec<VariableValue> {
         }
 
         // Get codec instance from builder
-        const codec = typeof datatypeDefinition.codec === 'function'
-            ? datatypeDefinition.codec(this.registry)
-            : datatypeDefinition.codec
+        const codec =
+            typeof datatypeDefinition.codec === 'function'
+                ? datatypeDefinition.codec(this.registry)
+                : datatypeDefinition.codec
 
         if (typeof value !== 'number' && typeof value !== 'bigint' && typeof value !== 'string') {
             throw new Error(`Invalid value type for VariableValueCodec: ${typeof value}`)
@@ -53,9 +57,10 @@ export class VariableValueCodec extends CustomCodec<VariableValue> {
         }
 
         // Get codec instance from builder
-        const codec = typeof datatypeDefinition.codec === 'function'
-            ? datatypeDefinition.codec(this.registry)
-            : datatypeDefinition.codec
+        const codec =
+            typeof datatypeDefinition.codec === 'function'
+                ? datatypeDefinition.codec(this.registry)
+                : datatypeDefinition.codec
 
         const result = codec.decode(buffer, offset)
         const rawBytes = buffer.slice(offset, offset + result.bytesRead)

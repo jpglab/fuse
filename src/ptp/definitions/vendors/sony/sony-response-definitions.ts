@@ -46,4 +46,4 @@ export const sonyResponseRegistry = {
     CameraStatusError,
 } as const
 
-export type SonyResponseDef = typeof sonyResponseRegistry[keyof typeof sonyResponseRegistry]
+export type SonyResponseDef = (typeof sonyResponseRegistry)[keyof typeof sonyResponseRegistry]

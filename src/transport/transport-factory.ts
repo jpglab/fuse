@@ -1,6 +1,6 @@
-import { TransportInterface } from '@transport/interfaces/transport.interface'
-import { TransportType, TransportOptions } from '@transport/interfaces/transport-types'
 import { Logger } from '@core/logger'
+import { TransportOptions, TransportType } from '@transport/interfaces/transport-types'
+import { TransportInterface } from '@transport/interfaces/transport.interface'
 
 /**
  * Transport factory for creating transport implementations
@@ -35,12 +35,13 @@ export class TransportFactory {
             case TransportType.USB:
                 return await this.createUSBTransport(options)
             case TransportType.IP:
-                if (!options || !("address" in options)) throw new Error("IP transport requires address"); return await this.createIPTransport(options)
+                if (!options || !('address' in options)) throw new Error('IP transport requires address')
+                return await this.createIPTransport(options)
             default:
-                const exhaustive: never = type; throw new Error(`Unknown transport type: ${exhaustive}`)
+                const exhaustive: never = type
+                throw new Error(`Unknown transport type: ${exhaustive}`)
         }
     }
-
 }
 
 /**

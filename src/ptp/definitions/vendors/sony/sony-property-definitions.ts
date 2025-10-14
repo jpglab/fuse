@@ -1,6 +1,6 @@
-import { PropertyDefinition } from '@ptp/types/property'
-import { baseCodecs, EnumCodec, CustomCodec } from '@ptp/types/codec'
 import { getDatatypeByName } from '@ptp/definitions/datatype-definitions'
+import { baseCodecs, CustomCodec, EnumCodec } from '@ptp/types/codec'
+import { PropertyDefinition } from '@ptp/types/property'
 
 const UNDEF = getDatatypeByName('UNDEF')!.code
 const UINT8 = getDatatypeByName('UINT8')!.code

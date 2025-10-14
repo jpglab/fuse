@@ -5,17 +5,17 @@
  * All runtime functionality is preserved from the original implementation.
  */
 
-import { EventEmitter } from '@ptp/types/event'
+import { Logger, PTPTransferLog } from '@core/logger'
+import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
+import { createPTPRegistry, Registry } from '@ptp/registry'
+import type { CodecDefinition, CodecInstance, CodecType } from '@ptp/types/codec'
 import type { EventData } from '@ptp/types/event'
-import { createPTPRegistry, Registry, type PTPRegistry } from '@ptp/registry'
-import type { CodecType, CodecDefinition, CodecInstance } from '@ptp/types/codec'
-import { TransportInterface, PTPEvent } from '@transport/interfaces/transport.interface'
-import { DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { EventEmitter } from '@ptp/types/event'
 import type { OperationDefinition } from '@ptp/types/operation'
 import type { PropertyDefinition } from '@ptp/types/property'
-import type { ParameterDefinition } from '@ptp/types/parameter'
-import { Logger, PTPTransferLog } from '@core/logger'
 import { OperationParams, OperationResponse } from '@ptp/types/type-helpers'
+import { DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
 
 // ============================================================================
 // GenericCamera class
@@ -44,7 +44,10 @@ export class GenericCamera {
      * Connect to device and open session
      */
     async connect(deviceIdentifier?: DeviceDescriptor): Promise<void> {
-        await this.transport.connect({ ...deviceIdentifier, ...(this.vendorId && { vendorId: this.vendorId }) })
+        // Only connect transport if not already connected
+        if (!this.transport.isConnected()) {
+            await this.transport.connect({ ...deviceIdentifier, ...(this.vendorId && { vendorId: this.vendorId }) })
+        }
 
         this.sessionId = Math.floor(Math.random() * 0xffffffff)
         const openResult = await this.send(this.registry.operations.OpenSession, { SessionID: this.sessionId })
@@ -193,7 +196,12 @@ export class GenericCamera {
             }
 
             // Special handling for property value operations without dataCodec
-            if (receivedData && receivedData.length > 0 && !decodedData && operation.name.includes('GetDevicePropValue')) {
+            if (
+                receivedData &&
+                receivedData.length > 0 &&
+                !decodedData &&
+                operation.name.includes('GetDevicePropValue')
+            ) {
                 const propCode = paramsRecord.DevicePropCode
                 if (propCode !== undefined) {
                     // Look up property definition in registry to decode value
@@ -364,6 +372,88 @@ export class GenericCamera {
 
         // Emit event parameters as array (compatible with EventData)
         this.emitter.emit(eventDef.name, event.parameters)
+    }
+
+    /**
+     * Get aperture value (f-number)
+     * Uses standard PTP FNumber property (0x5007)
+     */
+    async getAperture(): Promise<string> {
+        return this.get(this.registry.properties.FNumber)
+    }
+
+    /**
+     * Set aperture value (f-number)
+     * Uses standard PTP FNumber property (0x5007)
+     */
+    async setAperture(value: string): Promise<void> {
+        return this.set(this.registry.properties.FNumber, value)
+    }
+
+    /**
+     * Get shutter speed
+     * Uses standard PTP ExposureTime property (0x500d)
+     */
+    async getShutterSpeed(): Promise<string> {
+        return this.get(this.registry.properties.ExposureTime)
+    }
+
+    /**
+     * Set shutter speed
+     * Uses standard PTP ExposureTime property (0x500d)
+     */
+    async setShutterSpeed(value: string): Promise<void> {
+        return this.set(this.registry.properties.ExposureTime, value)
+    }
+
+    /**
+     * Get ISO sensitivity
+     * Uses standard PTP ExposureIndex property (0x500f)
+     */
+    async getIso(): Promise<string> {
+        return this.get(this.registry.properties.ExposureIndex)
+    }
+
+    /**
+     * Set ISO sensitivity
+     * Uses standard PTP ExposureIndex property (0x500f)
+     */
+    async setIso(value: string): Promise<void> {
+        return this.set(this.registry.properties.ExposureIndex, value)
+    }
+
+    /**
+     * Capture still image
+     * Uses standard PTP InitiateCapture operation
+     * Note: Generic implementation - vendors may override for better control
+     */
+    async captureImage(): Promise<{ info: ObjectInfo; data: Uint8Array } | null> {
+        await this.send(this.registry.operations.InitiateCapture, {})
+        throw new Error('Image retrieval after capture not implemented in generic camera')
+    }
+
+    /**
+     * Capture single live view frame
+     * Must be overridden by vendor cameras
+     */
+    async captureLiveView(): Promise<Uint8Array> {
+        throw new Error('Live view capture not supported on generic PTP cameras')
+    }
+
+    /**
+     * Start video recording
+     * Must be overridden by vendor cameras that support recording
+     */
+    async startRecording(): Promise<void> {
+        throw new Error('Video recording not supported on generic PTP cameras')
+    }
+
+    /**
+     * Stop video recording
+     * Must be overridden by vendor cameras that support recording
+     */
+    async stopRecording(): Promise<void> {
+        throw new Error('Video recording not supported on generic PTP cameras')
     }
 
     /**

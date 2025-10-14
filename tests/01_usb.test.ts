@@ -3,10 +3,10 @@
  * Tests USB device discovery, connection, and Sony camera interaction
  */
 
-import { describe, it, expect, beforeAll } from 'vitest'
-import { TransportFactory } from '@transport/transport-factory'
-import { TransportType } from '@transport/interfaces/transport.interface'
 import { VendorIDs, VendorNames } from '@ptp/definitions/vendor-ids'
+import { TransportType } from '@transport/interfaces/transport.interface'
+import { TransportFactory } from '@transport/transport-factory'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 // Sony vendor ID
 const SONY_VENDOR_ID = VendorIDs.SONY
@@ -153,8 +153,12 @@ describe('USB Transport', () => {
 
             if (camera) {
                 console.log('\nSony PTP Camera Details:')
-                console.log(`  Vendor ID: 0x${camera.vendorId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.vendorId || 'N/A'})`)
-                console.log(`  Product ID: 0x${camera.productId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.productId || 'N/A'})`)
+                console.log(
+                    `  Vendor ID: 0x${camera.vendorId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.vendorId || 'N/A'})`
+                )
+                console.log(
+                    `  Product ID: 0x${camera.productId?.toString(16).padStart(4, '0') || 'N/A'} (${camera.productId || 'N/A'})`
+                )
                 console.log(`  Product Name: ${camera.model || 'Not available (need to open device)'}`)
                 console.log(`  Manufacturer: ${camera.manufacturer || 'Not available (need to open device)'}`)
                 console.log(`  Serial Number: ${camera.serialNumber || 'Not available (need to open device)'}`)

@@ -1,4 +1,4 @@
-import { CustomCodec, type PTPRegistry } from '@ptp/types/codec'
+import { CustomCodec } from '@ptp/types/codec'
 
 export interface StorageInfo {
     storageType: number
@@ -87,4 +87,3 @@ export class StorageInfoCodec extends CustomCodec<StorageInfo> {
         }
     }
 }
-

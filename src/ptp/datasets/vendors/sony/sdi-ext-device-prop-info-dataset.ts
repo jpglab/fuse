@@ -1,8 +1,8 @@
-import { CodecDefinition, CodecInstance, CustomCodec, type PTPRegistry } from '@ptp/types/codec'
-import { DatatypeCode } from '@ptp/types/datatype'
-import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
-import { DevicePropDesc } from '@ptp/datasets/device-prop-desc-dataset'
 import { VariableValueCodec } from '@ptp/datasets/codecs/variable-value-codec'
+import { DevicePropDesc } from '@ptp/datasets/device-prop-desc-dataset'
+import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
+import { CustomCodec } from '@ptp/types/codec'
+import { DatatypeCode } from '@ptp/types/datatype'
 
 /**
  * Sony-specific device property descriptor extensions
@@ -112,9 +112,8 @@ export class SDIExtDevicePropInfoCodec extends CustomCodec<SonyDevicePropDesc> {
 
         if (propertyDef && propertyDef.codec && currentValueBytes.length > 0) {
             // Get codec instance from builder
-            const codecInstance = typeof propertyDef.codec === 'function'
-                ? propertyDef.codec(this.registry)
-                : propertyDef.codec
+            const codecInstance =
+                typeof propertyDef.codec === 'function' ? propertyDef.codec(this.registry) : propertyDef.codec
 
             try {
                 const decodedResult = codecInstance.decode(currentValueBytes, 0)
@@ -125,16 +124,17 @@ export class SDIExtDevicePropInfoCodec extends CustomCodec<SonyDevicePropDesc> {
 
             // Decode enum values
             if (enumValuesSet.length > 0) {
-                enumValuesSetDecoded = enumValuesSet.map((rawVal) => {
+                enumValuesSetDecoded = enumValuesSet.map(rawVal => {
                     try {
                         // Get the datatype codec to encode raw value to bytes
                         const datatypeDefinition = getDatatypeByCode(dataType)
                         if (!datatypeDefinition?.codec) return rawVal
 
                         // Get datatype codec instance
-                        const datatypeCodec = typeof datatypeDefinition.codec === 'function'
-                            ? datatypeDefinition.codec(this.registry)
-                            : datatypeDefinition.codec
+                        const datatypeCodec =
+                            typeof datatypeDefinition.codec === 'function'
+                                ? datatypeDefinition.codec(this.registry)
+                                : datatypeDefinition.codec
 
                         const bytes = datatypeCodec.encode(rawVal)
                         const decoded = codecInstance.decode(bytes, 0)
@@ -146,16 +146,17 @@ export class SDIExtDevicePropInfoCodec extends CustomCodec<SonyDevicePropDesc> {
             }
 
             if (enumValuesGetSet.length > 0) {
-                enumValuesGetSetDecoded = enumValuesGetSet.map((rawVal) => {
+                enumValuesGetSetDecoded = enumValuesGetSet.map(rawVal => {
                     try {
                         // Get the datatype codec to encode raw value to bytes
                         const datatypeDefinition = getDatatypeByCode(dataType)
                         if (!datatypeDefinition?.codec) return rawVal
 
                         // Get datatype codec instance
-                        const datatypeCodec = typeof datatypeDefinition.codec === 'function'
-                            ? datatypeDefinition.codec(this.registry)
-                            : datatypeDefinition.codec
+                        const datatypeCodec =
+                            typeof datatypeDefinition.codec === 'function'
+                                ? datatypeDefinition.codec(this.registry)
+                                : datatypeDefinition.codec
 
                         const bytes = datatypeCodec.encode(rawVal)
                         const decoded = codecInstance.decode(bytes, 0)
@@ -232,4 +233,3 @@ export class SDIDevicePropInfoArrayCodec extends CustomCodec<SDIDevicePropInfoAr
         }
     }
 }
-

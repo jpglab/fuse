@@ -1,4 +1,4 @@
-import { EventDefinition } from '@ptp/types/event';
+import { EventDefinition } from '@ptp/types/event'
 
 /** Undefined event */
 export const Undefined = {
@@ -6,7 +6,7 @@ export const Undefined = {
     name: 'Undefined',
     description: 'Undefined event',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** CancelTransaction event */
 export const CancelTransaction = {
@@ -14,7 +14,7 @@ export const CancelTransaction = {
     name: 'CancelTransaction',
     description: 'Cancel a transaction',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** ObjectAdded event */
 export const ObjectAdded = {
@@ -28,7 +28,7 @@ export const ObjectAdded = {
             type: 'ObjectHandle',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** ObjectRemoved event */
 export const ObjectRemoved = {
@@ -42,7 +42,7 @@ export const ObjectRemoved = {
             type: 'ObjectHandle',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** StoreAdded event */
 export const StoreAdded = {
@@ -56,7 +56,7 @@ export const StoreAdded = {
             type: 'StorageID',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** StoreRemoved event */
 export const StoreRemoved = {
@@ -70,7 +70,7 @@ export const StoreRemoved = {
             type: 'StorageID',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** DevicePropChanged event */
 export const DevicePropChanged = {
@@ -84,7 +84,7 @@ export const DevicePropChanged = {
             type: 'DevicePropCode',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** ObjectInfoChanged event */
 export const ObjectInfoChanged = {
@@ -98,7 +98,7 @@ export const ObjectInfoChanged = {
             type: 'ObjectHandle',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** DeviceInfoChanged event */
 export const DeviceInfoChanged = {
@@ -106,7 +106,7 @@ export const DeviceInfoChanged = {
     name: 'DeviceInfoChanged',
     description: 'Device information or capabilities changed',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** RequestObjectTransfer event */
 export const RequestObjectTransfer = {
@@ -120,11 +120,11 @@ export const RequestObjectTransfer = {
             type: 'ObjectHandle',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** StoreFull event */
 export const StoreFull = {
-    code: 0x400A,
+    code: 0x400a,
     name: 'StoreFull',
     description: 'Store is full',
     parameters: [
@@ -134,19 +134,19 @@ export const StoreFull = {
             type: 'StorageID',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** DeviceReset event */
 export const DeviceReset = {
-    code: 0x400B,
+    code: 0x400b,
     name: 'DeviceReset',
     description: 'Device has been reset',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** StorageInfoChanged event */
 export const StorageInfoChanged = {
-    code: 0x400C,
+    code: 0x400c,
     name: 'StorageInfoChanged',
     description: 'Storage information changed',
     parameters: [
@@ -156,23 +156,23 @@ export const StorageInfoChanged = {
             type: 'StorageID',
         },
     ],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** CaptureComplete event */
 export const CaptureComplete = {
-    code: 0x400D,
+    code: 0x400d,
     name: 'CaptureComplete',
     description: 'Capture operation completed',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 /** UnreportedStatus event */
 export const UnreportedStatus = {
-    code: 0x400E,
+    code: 0x400e,
     name: 'UnreportedStatus',
     description: 'Unreported status change occurred',
     parameters: [],
-} as const satisfies EventDefinition;
+} as const satisfies EventDefinition
 
 export const genericEventRegistry = {
     Undefined,
@@ -190,6 +190,6 @@ export const genericEventRegistry = {
     StorageInfoChanged,
     CaptureComplete,
     UnreportedStatus,
-} as const satisfies { [key: string]: EventDefinition };
+} as const satisfies { [key: string]: EventDefinition }
 
-export type GenericEventDef = typeof genericEventRegistry[keyof typeof genericEventRegistry];
+export type GenericEventDef = (typeof genericEventRegistry)[keyof typeof genericEventRegistry]

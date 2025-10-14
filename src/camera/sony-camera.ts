@@ -5,21 +5,17 @@
  * Accepts definition objects instead of strings with merged generic + Sony registries.
  */
 
-import { EventEmitter } from '@ptp/types/event'
-import type { EventData } from '@ptp/types/event'
-import { createSonyRegistry, type SonyRegistry } from '@ptp/registry'
-import type { CodecType, CodecDefinition, CodecInstance } from '@ptp/types/codec'
-import { TransportInterface, PTPEvent } from '@transport/interfaces/transport.interface'
-import { DeviceDescriptor } from '@transport/interfaces/device.interface'
-import type { OperationDefinition } from '@ptp/types/operation'
-import type { PropertyDefinition } from '@ptp/types/property'
-import type { ParameterDefinition } from '@ptp/types/parameter'
-import { Logger, PTPTransferLog } from '@core/logger'
-import { VendorIDs } from '@ptp/definitions/vendor-ids'
-import { parseLiveViewDataset } from '@ptp/datasets/vendors/sony/sony-live-view-dataset'
+import { Logger } from '@core/logger'
 import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
+import { parseLiveViewDataset } from '@ptp/datasets/vendors/sony/sony-live-view-dataset'
+import { VendorIDs } from '@ptp/definitions/vendor-ids'
+import { createSonyRegistry, type SonyRegistry } from '@ptp/registry'
+import type { CodecType } from '@ptp/types/codec'
+import type { EventData } from '@ptp/types/event'
+import type { PropertyDefinition } from '@ptp/types/property'
+import { DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
 import { GenericCamera } from './generic-camera'
-import { OperationParams, OperationResponse } from '@ptp/types/type-helpers'
 
 // ============================================================================
 // Sony authentication constants
@@ -58,7 +54,9 @@ export class SonyCamera extends GenericCamera {
      * Connect to Sony camera with SDIO_OpenSession and authentication
      */
     async connect(deviceIdentifier?: DeviceDescriptor): Promise<void> {
-        await this.transport.connect({ ...deviceIdentifier, vendorId: this.vendorId })
+        if (!this.transport.isConnected()) {
+            await this.transport.connect({ ...deviceIdentifier, vendorId: this.vendorId })
+        }
 
         this.sessionId = Math.floor(Math.random() * 0xffffffff)
 
@@ -256,58 +254,9 @@ export class SonyCamera extends GenericCamera {
     }
 
     /**
-     * Capture single live view frame
-     */
-    async captureLiveView(): Promise<{ info: ObjectInfo; data: Uint8Array } | null> {
-        if (!this.liveViewEnabled) {
-            await this.set(this.registry.properties.SetLiveViewEnable, 'ENABLE')
-            this.liveViewEnabled = true
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const objectInfoResponse = await this.send(this.registry.operations.GetObjectInfo, {
-            ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
-        })
-
-        if (!objectInfoResponse.data) {
-            return null
-        }
-
-        const objectInfo = objectInfoResponse.data
-
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const objectFormat = objectInfo.objectFormat
-
-        const objectResponse = await this.send(this.registry.operations.GetObject, {
-            ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
-        })
-
-        if (!objectResponse.data) {
-            return null
-        }
-
-        const liveViewData = parseLiveViewDataset(objectResponse.data, this.registry)
-
-        // Try to look up Sony format info by code
-        const sonyFormatInfo = Object.values(this.registry.formats).find(f => f.code === objectFormat)
-
-        return liveViewData.liveViewImage
-            ? {
-                  info: {
-                      ...objectInfo,
-                      objectFormat: sonyFormatInfo?.code || objectFormat,
-                  },
-                  data: liveViewData.liveViewImage,
-              }
-            : null
-    }
-
-    /**
      * Stream live view frames (returns raw image data)
      */
-    async streamLiveView(): Promise<Uint8Array> {
+    async captureLiveView(): Promise<Uint8Array> {
         if (!this.liveViewEnabled) {
             await this.set(this.registry.properties.SetLiveViewEnable, 'ENABLE')
             this.liveViewEnabled = true
@@ -336,5 +285,53 @@ export class SonyCamera extends GenericCamera {
 
         // Emit event parameters as array
         this.emitter.emit(eventDef.name, event.parameters)
+    }
+
+    /**
+     * Get aperture value - Sony override
+     * Uses Sony's vendor-specific Aperture property (0x5007)
+     */
+    async getAperture(): Promise<string> {
+        return this.get(this.registry.properties.Aperture)
+    }
+
+    /**
+     * Set aperture value - Sony override
+     * Uses Sony's vendor-specific Aperture property (0x5007)
+     */
+    async setAperture(value: string): Promise<void> {
+        return this.set(this.registry.properties.Aperture, value)
+    }
+
+    /**
+     * Get shutter speed - Sony override
+     * Uses Sony's vendor-specific ShutterSpeed property (0xd20d)
+     */
+    async getShutterSpeed(): Promise<string> {
+        return this.get(this.registry.properties.ShutterSpeed)
+    }
+
+    /**
+     * Set shutter speed - Sony override
+     * Uses Sony's vendor-specific ShutterSpeed property (0xd20d)
+     */
+    async setShutterSpeed(value: string): Promise<void> {
+        return this.set(this.registry.properties.ShutterSpeed, value)
+    }
+
+    /**
+     * Get ISO sensitivity - Sony override
+     * Uses Sony's vendor-specific Iso property (0xd21e)
+     */
+    async getIso(): Promise<string> {
+        return this.get(this.registry.properties.Iso)
+    }
+
+    /**
+     * Set ISO sensitivity - Sony override
+     * Uses Sony's vendor-specific Iso property (0xd21e)
+     */
+    async setIso(value: string): Promise<void> {
+        return this.set(this.registry.properties.Iso, value)
     }
 }

@@ -5,7 +5,10 @@ const MAX_LINE_WIDTH = 100
 /**
  * Generic JSON formatter with line wrapping and proper indentation
  */
-export function formatJSON(val: number | bigint | string | boolean | null | undefined | object | Uint8Array, indent: number = 0): string[] {
+export function formatJSON(
+    val: number | bigint | string | boolean | null | undefined | object | Uint8Array,
+    indent: number = 0
+): string[] {
     const lines: string[] = []
     const baseIndent = '  '.repeat(indent)
 
@@ -172,7 +175,11 @@ export function formatJSON(val: number | bigint | string | boolean | null | unde
 /**
  * Legacy exports for compatibility
  */
-export function formatCompact(val: number | bigint | string | boolean | null | undefined | object | Uint8Array, indent: number = 0, linePrefix: string = ''): string {
+export function formatCompact(
+    val: number | bigint | string | boolean | null | undefined | object | Uint8Array,
+    indent: number = 0,
+    linePrefix: string = ''
+): string {
     return formatJSON(val, indent).join('\n')
 }
 

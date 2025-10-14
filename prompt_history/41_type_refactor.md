@@ -28,12 +28,14 @@ The absolutely crucial piece of this project is the definition of constants and 
     - You should refer to Section 12 (titled "Events") as well as Section 9 (titled "Communication Protocol")
 
 For each type of **Constant**:
+
 - The type definition of the constant should live in its own file, titled `<constant name>.ts`
 - The definition of entities representing that constant should live in its own file, titled `<constant name>-definitions.ts` which exports a list of possible values
     - Each vendor will have their own overrides for each constant type – any vendor operations/properties with the same name should take precedence over the default PTP definitions. Do not define ANY vendor overrides at this time but put a stub in `vendors/<constant name>-definitions.ts` for each constant type
 - Non-standard codecs definitions and non-standard parameter definitions should be inline unless they are used in more than one place
 
 For the protocol level:
+
 - `connect` (claims interface, opens connection/session)
 - `disconnect` (closes session/connection, releases interface)
 - `send` (takes an operation name and any parameters)
@@ -41,6 +43,6 @@ For the protocol level:
 - `set` (encodes a value and sets property name)
 - `on` (handles any events)
 
-Between our type definitions, constants, and protocol level, everything should be type-safe such that a consumer can't pass in a bad operation/property or malformed/missing/extraneous parameters. The functions should support Intellisense for names and parameters. Put all the new code relating to constants and protocol in `src/ptp`. 
+Between our type definitions, constants, and protocol level, everything should be type-safe such that a consumer can't pass in a bad operation/property or malformed/missing/extraneous parameters. The functions should support Intellisense for names and parameters. Put all the new code relating to constants and protocol in `src/ptp`.
 
 Read `AGENTS.md` in full before continuing. The documentation and related images can be found in `./ptp_iso_15740_reference`

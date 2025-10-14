@@ -16,32 +16,32 @@ This implementation achieves **true single-source-of-truth** - all protocol know
 ## Usage
 
 ```typescript
-import { PTPProtocol } from './ptp';
+import { PTPProtocol } from './ptp'
 
-const protocol = new PTPProtocol(transport);
+const protocol = new PTPProtocol(transport)
 
 // Connect to device
-await protocol.connect();
+await protocol.connect()
 
 // Operations - parameters automatically inferred
-await protocol.send('GetDeviceInfo');              // No params
-await protocol.send('GetStorageInfo', 0x10001);    // Required param
-await protocol.send('InitiateCapture');            // Optional params
-await protocol.send('MoveObject', 1, 2, 3);        // Multiple params
+await protocol.send('GetDeviceInfo') // No params
+await protocol.send('GetStorageInfo', 0x10001) // Required param
+await protocol.send('InitiateCapture') // Optional params
+await protocol.send('MoveObject', 1, 2, 3) // Multiple params
 
 // Properties - types automatically inferred
-const battery: number = await protocol.get('BatteryLevel');
-const artist: string = await protocol.get('Artist');
-await protocol.set('ExposureTime', 1000);          // number required
-await protocol.set('Artist', 'John Doe');          // string required
+const battery: number = await protocol.get('BatteryLevel')
+const artist: string = await protocol.get('Artist')
+await protocol.set('ExposureTime', 1000) // number required
+await protocol.set('Artist', 'John Doe') // string required
 
 // Events
-protocol.on('CaptureComplete', (event) => {
-    console.log('Capture complete!');
-});
+protocol.on('CaptureComplete', event => {
+    console.log('Capture complete!')
+})
 
 // Disconnect
-await protocol.disconnect();
+await protocol.disconnect()
 ```
 
 ## Type Safety
@@ -50,12 +50,12 @@ All invalid usage is caught at compile time:
 
 ```typescript
 // ❌ These cause TypeScript compile errors:
-await protocol.send('InvalidOperation');           // Invalid name
-await protocol.send('GetStorageInfo');            // Missing param
-await protocol.send('GetDeviceInfo', 123);        // Too many params
-await protocol.set('ExposureTime', 'not-number'); // Wrong type
-await protocol.get('InvalidProperty');            // Invalid property
-protocol.on('InvalidEvent', () => {});            // Invalid event
+await protocol.send('InvalidOperation') // Invalid name
+await protocol.send('GetStorageInfo') // Missing param
+await protocol.send('GetDeviceInfo', 123) // Too many params
+await protocol.set('ExposureTime', 'not-number') // Wrong type
+await protocol.get('InvalidProperty') // Invalid property
+protocol.on('InvalidEvent', () => {}) // Invalid event
 ```
 
 ## Extending the Protocol
@@ -65,6 +65,7 @@ To add new operations, properties, or events, simply add them to the appropriate
 ### Adding an Operation
 
 Edit `operation-definitions.ts`:
+
 ```typescript
 export const operationDefinitions = [
     // ... existing operations
@@ -78,22 +79,24 @@ export const operationDefinitions = [
                 name: 'param1',
                 description: 'First parameter',
                 codec: baseCodecs.uint32,
-                required: true
-            }
+                required: true,
+            },
         ],
-        responseParameters: []
-    }
-] as const satisfies readonly OperationDefinition[];
+        responseParameters: [],
+    },
+] as const satisfies readonly OperationDefinition[]
 ```
 
 The operation is immediately available with full type safety:
+
 ```typescript
-await protocol.send('MyNewOperation', 12345);  // ✅ Type-safe!
+await protocol.send('MyNewOperation', 12345) // ✅ Type-safe!
 ```
 
 ### Adding a Property
 
 Edit `property-definitions.ts`:
+
 ```typescript
 export const propertyDefinitions = [
     // ... existing properties
@@ -103,14 +106,15 @@ export const propertyDefinitions = [
         description: 'My custom property',
         datatype: UINT32,
         access: 'GetSet',
-        codec: baseCodecs.uint32
-    }
-] as const satisfies readonly PropertyDefinition[];
+        codec: baseCodecs.uint32,
+    },
+] as const satisfies readonly PropertyDefinition[]
 ```
 
 ### Adding an Event
 
 Edit `event-definitions.ts`:
+
 ```typescript
 export const eventDefinitions = [
     // ... existing events
@@ -122,11 +126,11 @@ export const eventDefinitions = [
             {
                 name: 'EventData',
                 description: 'Event data',
-                type: 'UINT32'
-            }
-        ]
-    }
-] as const satisfies readonly EventDefinition[];
+                type: 'UINT32',
+            },
+        ],
+    },
+] as const satisfies readonly EventDefinition[]
 ```
 
 ## Files Structure

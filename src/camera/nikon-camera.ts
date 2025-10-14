@@ -5,21 +5,15 @@
  * Accepts definition objects instead of strings with merged generic + Nikon registries.
  */
 
-import { EventEmitter } from '@ptp/types/event'
-import type { EventData } from '@ptp/types/event'
-import { createNikonRegistry, type NikonRegistry } from '@ptp/registry'
-import type { CodecType, CodecDefinition, CodecInstance } from '@ptp/types/codec'
-import { TransportInterface, PTPEvent } from '@transport/interfaces/transport.interface'
-import { DeviceDescriptor } from '@transport/interfaces/device.interface'
-import type { OperationDefinition } from '@ptp/types/operation'
-import type { PropertyDefinition } from '@ptp/types/property'
-import type { ParameterDefinition } from '@ptp/types/parameter'
-import { Logger, PTPTransferLog } from '@core/logger'
+import { Logger } from '@core/logger'
 import { VendorIDs } from '@ptp/definitions/vendor-ids'
+import { ISOAutoControl } from '@ptp/definitions/vendors/nikon/nikon-operation-definitions'
+import { createNikonRegistry, type NikonRegistry } from '@ptp/registry'
+import type { CodecType } from '@ptp/types/codec'
+import type { EventData } from '@ptp/types/event'
+import type { PropertyDefinition } from '@ptp/types/property'
+import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
 import { GenericCamera } from './generic-camera'
-import { OperationParams, OperationResponse } from '@ptp/types/type-helpers'
-import { parseNikonLiveViewDataset } from '@ptp/datasets/vendors/nikon/nikon-live-view-dataset'
-import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
 
 // ============================================================================
 // NikonCamera class
@@ -146,9 +140,7 @@ export class NikonCamera extends GenericCamera {
             }
 
             // Any other response code indicates an error
-            throw new Error(
-                `Failed to start live view: DeviceReady returned code 0x${readyResponse.code.toString(16)}`
-            )
+            throw new Error(`Failed to start live view: DeviceReady returned code 0x${readyResponse.code.toString(16)}`)
         }
 
         throw new Error('Timeout waiting for live view to start')
@@ -163,89 +155,34 @@ export class NikonCamera extends GenericCamera {
     }
 
     /**
+     * Set ISO sensitivity - Nikon override
+     * Handles ISOAutoControl property based on value
+     */
+    async setIso(value: string): Promise<void> {
+        const isAuto = value.toLowerCase().includes('auto')
+
+        if (isAuto) {
+            // Enable auto ISO
+            return await this.set(ISOAutoControl, 'ON')
+        } else {
+            // Disable auto ISO, then set specific value
+            await this.set(ISOAutoControl, 'OFF')
+            return await this.set(this.registry.properties.ExposureIndex, value)
+        }
+    }
+
+    /**
      * Capture single live view frame
      * Returns both metadata and image data
      */
-    async captureLiveView(): Promise<{ data: Uint8Array; metadata: any } | null> {
+    async captureLiveView(): Promise<Uint8Array> {
         if (!this.liveViewEnabled) {
             await this.startLiveView()
         }
 
         const response = await this.send(this.registry.operations.GetLiveViewImageEx, {})
+        const liveViewData = response.data
 
-        if (!response.data) {
-            return null
-        }
-
-        const liveViewData = parseNikonLiveViewDataset(response.data, this.registry)
-
-        return liveViewData.liveViewImage
-            ? {
-                  data: liveViewData.liveViewImage,
-                  metadata: {
-                      version: { major: liveViewData.majorVersion, minor: liveViewData.minorVersion },
-                      dimensions: liveViewData.liveViewImageImageSize,
-                      wholeSize: liveViewData.wholeSize,
-                      displayAreaSize: liveViewData.displayAreaSize,
-                      focus: {
-                          afDrivingEnabled: liveViewData.afDrivingEnabled,
-                          focusDrivingStatus: liveViewData.focusDrivingStatus,
-                          focusingJudgementResult: liveViewData.focusingJudgementResult,
-                          afModeState: liveViewData.afModeState,
-                          afAreaNumber: liveViewData.afAreaNumber,
-                          selectedSubjectIndex: liveViewData.selectedSubjectIndex,
-                          trackingState: liveViewData.trackingState,
-                          afFrameSize: liveViewData.afFrameSize,
-                          afFrameCenterCoords: liveViewData.afFrameCenterCoords,
-                      },
-                      video: {
-                          videoRecordingInfo: liveViewData.videoRecordingInfo,
-                          remainingTime: liveViewData.remainingVideoTime,
-                          elapsedTime: liveViewData.elapsedVideoTime,
-                          syncRecordingState: liveViewData.syncRecordingState,
-                      },
-                      rotation: liveViewData.rotation,
-                      levelAngle: {
-                          rolling: liveViewData.levelAngleRolling,
-                          pitching: liveViewData.levelAnglePitching,
-                          yawing: liveViewData.levelAngleYawing,
-                      },
-                  },
-              }
-            : null
-    }
-
-    /**
-     * Stream live view frames (returns raw image data only)
-     */
-    async streamLiveView(): Promise<Uint8Array> {
-        if (!this.liveViewEnabled) {
-            await this.startLiveView()
-        }
-
-        const response = await this.send(
-            this.registry.operations.GetLiveViewImageEx,
-            {},
-            undefined,
-            2 * 1024 * 1024 // 2MB buffer for metadata + JPEG
-        )
-
-        if (!response.data) {
-            return new Uint8Array()
-        }
-
-        // Data is already decoded by dataCodec to NikonLiveViewDataset
-        if (typeof response.data === 'object' && 'liveViewImage' in response.data) {
-            const liveViewData = response.data as any
-            return liveViewData.liveViewImage || new Uint8Array()
-        }
-
-        // Fallback: parse manually if still Uint8Array
-        if (response.data instanceof Uint8Array) {
-            const liveViewData = parseNikonLiveViewDataset(response.data, this.registry)
-            return liveViewData.liveViewImage || new Uint8Array()
-        }
-
-        return new Uint8Array()
+        return liveViewData.liveViewImage || new Uint8Array()
     }
 }

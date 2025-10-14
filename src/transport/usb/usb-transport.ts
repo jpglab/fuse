@@ -1,10 +1,9 @@
-import { OperationDefinition } from '@ptp/types/operation'
-import { TransportInterface, PTPEvent } from '@transport/interfaces/transport.interface'
-import { DeviceDescriptor } from '@transport/interfaces/device.interface'
-import { TransportType } from '@transport/interfaces/transport-types'
 import { Logger } from '@core/logger'
 import { VendorIDs } from '@ptp/definitions/vendor-ids'
-import { USBContainerBuilder, USBContainerType, toBuffer, toUint8Array } from './usb-container'
+import { DeviceDescriptor } from '@transport/interfaces/device.interface'
+import { TransportType } from '@transport/interfaces/transport-types'
+import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
+import { USBContainerBuilder, USBContainerType } from './usb-container'
 
 export enum EndpointType {
     BULK_IN = 'bulk_in',

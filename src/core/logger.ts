@@ -133,10 +133,9 @@ export class Logger {
                     .then(({ render }) => {
                         import('./renderers/ink-simple')
                             .then(({ InkSimpleLogger }) => {
-                                this.inkInstance = render(
-                                    React.createElement(InkSimpleLogger, { logger: this }),
-                                    { patchConsole: false }
-                                )
+                                this.inkInstance = render(React.createElement(InkSimpleLogger, { logger: this }), {
+                                    patchConsole: false,
+                                })
                             })
                             .catch(() => {
                                 // Ink renderer not available, continue without UI
@@ -284,4 +283,4 @@ export class Logger {
     }
 }
 
-export type { LogLevel, BaseLog, PTPOperationLog, USBTransferLog, PTPTransferLog, ConsoleLog, Log, NewLog }
+export type { BaseLog, ConsoleLog, Log, LogLevel, NewLog, PTPOperationLog, PTPTransferLog, USBTransferLog }

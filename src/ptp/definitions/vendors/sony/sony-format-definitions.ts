@@ -35,4 +35,4 @@ export const sonyFormatRegistry = {
     MP4,
 } as const
 
-export type SonyFormatDef = typeof sonyFormatRegistry[keyof typeof sonyFormatRegistry]
+export type SonyFormatDef = (typeof sonyFormatRegistry)[keyof typeof sonyFormatRegistry]

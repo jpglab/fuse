@@ -1,7 +1,6 @@
-import type { SonyCamera } from '@camera/sony-camera'
-import * as SonyProps from '@ptp/definitions/vendors/sony/sony-property-definitions'
-import { store } from './store.svelte'
+import type { Camera } from '@camera/index'
 import { cameraQueue } from './queue'
+import { store } from './store.svelte'
 
 export const startStreaming = () => {
     store.streaming = true
@@ -20,29 +19,29 @@ export const stopStreaming = () => {
     store.frameTimestamps = []
 }
 
-export const streamFrame = async (camera: SonyCamera, ctx: CanvasRenderingContext2D) => {
+export const streamFrame = async (camera: Camera, ctx: CanvasRenderingContext2D) => {
     if (!store.streaming || !camera || !store.connected || !store.canvasRef) return
 
     try {
         const newSettings = await cameraQueue.push(async () => {
-            return {
-                aperture: await camera.get(SonyProps.Aperture),
-                shutterSpeed: await camera.get(SonyProps.ShutterSpeed),
-                iso: await camera.get(SonyProps.Iso),
-                liveViewImageQuality: await camera.get(SonyProps.LiveViewImageQuality),
-                // exposure: await camera.get(SonyProps.Exposure),
+            try {
+                return {
+                    aperture: await camera.getAperture(),
+                    shutterSpeed: await camera.getShutterSpeed(),
+                    iso: await camera.getIso(),
+                }
+            } catch (error) {
+                // Properties not supported on this camera
+                return {}
             }
         })
 
-        // Track which properties changed
-        if (store.previousSettings) {
+        // Track which properties changed (only if we have settings)
+        if (store.previousSettings && Object.keys(newSettings).length > 0) {
             const changed = new Set<string>()
             if (store.previousSettings.aperture !== newSettings.aperture) changed.add('aperture')
             if (store.previousSettings.shutterSpeed !== newSettings.shutterSpeed) changed.add('shutterSpeed')
             if (store.previousSettings.iso !== newSettings.iso) changed.add('iso')
-            if (store.previousSettings.liveViewImageQuality !== newSettings.liveViewImageQuality)
-                changed.add('liveViewImageQuality')
-            // if (store.previousSettings.exposure !== newSettings.exposure) changed.add('exposure')
 
             if (changed.size > 0) {
                 store.changedProps = changed
@@ -56,7 +55,7 @@ export const streamFrame = async (camera: SonyCamera, ctx: CanvasRenderingContex
         store.previousSettings = newSettings
         store.settings = newSettings
 
-        const result = await cameraQueue.push(async () => await camera.streamLiveView())
+        const result = await cameraQueue.push(async () => await camera.captureLiveView())
         if (result && store.streaming) {
             // Decode JPEG binary data directly to ImageBitmap (no URLs!)
             const blob = new Blob([new Uint8Array(result)], { type: 'image/jpeg' })

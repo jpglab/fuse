@@ -1,7 +1,7 @@
-import { CodecDefinition, CodecInstance, CustomCodec, type PTPRegistry } from '@ptp/types/codec'
-import { DatatypeCode } from '@ptp/types/datatype'
-import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
 import { VariableValueCodec } from '@ptp/datasets/codecs/variable-value-codec'
+import { getDatatypeByCode } from '@ptp/definitions/datatype-definitions'
+import { CustomCodec, type PTPRegistry } from '@ptp/types/codec'
+import { DatatypeCode } from '@ptp/types/datatype'
 
 export interface DevicePropDesc {
     devicePropertyCode: number
@@ -99,9 +99,8 @@ export class DevicePropDescCodec extends CustomCodec<DevicePropDesc> {
         let currentValueDecoded: number | bigint | string = currentValueRaw
         if (propertyDef && propertyDef.codec) {
             // Get codec instance from builder
-            const codecInstance = typeof propertyDef.codec === 'function'
-                ? propertyDef.codec(this.registry)
-                : propertyDef.codec
+            const codecInstance =
+                typeof propertyDef.codec === 'function' ? propertyDef.codec(this.registry) : propertyDef.codec
             const decodedResult = codecInstance.decode(currentValueBytes, 0)
             currentValueDecoded = decodedResult.value
         }
@@ -129,18 +128,24 @@ export class DevicePropDescCodec extends CustomCodec<DevicePropDesc> {
             currentOffset += stepResult.bytesRead
 
             // Decode range values if codec available
-            if (propertyDef && propertyDef.codec && minimumValue !== undefined && maximumValue !== undefined && stepSize !== undefined) {
+            if (
+                propertyDef &&
+                propertyDef.codec &&
+                minimumValue !== undefined &&
+                maximumValue !== undefined &&
+                stepSize !== undefined
+            ) {
                 // Get codec instance from builder
-                const codecInstance = typeof propertyDef.codec === 'function'
-                    ? propertyDef.codec(this.registry)
-                    : propertyDef.codec
+                const codecInstance =
+                    typeof propertyDef.codec === 'function' ? propertyDef.codec(this.registry) : propertyDef.codec
 
                 const datatypeDefinition = getDatatypeByCode(dataType)
                 if (datatypeDefinition?.codec) {
                     // Get datatype codec instance
-                    const datatypeCodec = typeof datatypeDefinition.codec === 'function'
-                        ? datatypeDefinition.codec(this.registry)
-                        : datatypeDefinition.codec
+                    const datatypeCodec =
+                        typeof datatypeDefinition.codec === 'function'
+                            ? datatypeDefinition.codec(this.registry)
+                            : datatypeDefinition.codec
 
                     const minBytes = datatypeCodec.encode(minimumValue)
                     const maxBytes = datatypeCodec.encode(maximumValue)
@@ -168,18 +173,18 @@ export class DevicePropDescCodec extends CustomCodec<DevicePropDesc> {
             supportedValuesDecoded = supportedValuesRaw
             if (propertyDef && propertyDef.codec && supportedValuesRaw && supportedValuesRaw.length > 0) {
                 // Get codec instance from builder
-                const codecInstance = typeof propertyDef.codec === 'function'
-                    ? propertyDef.codec(this.registry)
-                    : propertyDef.codec
+                const codecInstance =
+                    typeof propertyDef.codec === 'function' ? propertyDef.codec(this.registry) : propertyDef.codec
 
                 const datatypeDefinition = getDatatypeByCode(dataType)
                 if (datatypeDefinition?.codec) {
                     // Get datatype codec instance
-                    const datatypeCodec = typeof datatypeDefinition.codec === 'function'
-                        ? datatypeDefinition.codec(this.registry)
-                        : datatypeDefinition.codec
+                    const datatypeCodec =
+                        typeof datatypeDefinition.codec === 'function'
+                            ? datatypeDefinition.codec(this.registry)
+                            : datatypeDefinition.codec
 
-                    supportedValuesDecoded = supportedValuesRaw.map((rawVal) => {
+                    supportedValuesDecoded = supportedValuesRaw.map(rawVal => {
                         const bytes = datatypeCodec.encode(rawVal)
                         const decoded = codecInstance.decode(bytes, 0)
                         return decoded.value

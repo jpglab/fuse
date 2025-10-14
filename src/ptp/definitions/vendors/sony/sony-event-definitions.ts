@@ -97,7 +97,7 @@ export const SDIE_ControlJobListEvent = {
     description: 'Notify the Control Job List Event',
     parameters: [
         { name: 'Result', description: 'Control job list result code', type: 'UINT32' },
-        { name: 'ControlType', description: 'Control type', type: 'UINT32' }
+        { name: 'ControlType', description: 'Control type', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -115,7 +115,7 @@ export const SDIE_ControlUploadDataResult = {
     parameters: [
         { name: 'Result', description: 'Control upload result code', type: 'UINT32' },
         { name: 'ControlType', description: 'Control type', type: 'UINT32' },
-        { name: 'OptionParam', description: 'Optional parameter', type: 'UINT32' }
+        { name: 'OptionParam', description: 'Optional parameter', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -182,7 +182,7 @@ export const SDIE_FirmwareUpdateEvent = {
     parameters: [
         { name: 'Event ID', description: 'Firmware update event ID', type: 'UINT32' },
         { name: 'Param1', description: 'Event parameter 1', type: 'UINT32' },
-        { name: 'Param2', description: 'Event parameter 2', type: 'UINT32' }
+        { name: 'Param2', description: 'Event parameter 2', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -192,7 +192,7 @@ export const SDIE_StreamStatusEvent = {
     description: 'Notify the stream status event',
     parameters: [
         { name: 'Stream ID', description: 'Stream identifier', type: 'UINT32' },
-        { name: 'Status', description: 'Stream status', type: 'UINT32' }
+        { name: 'Status', description: 'Stream status', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -217,7 +217,7 @@ export const SDIE_OperationResults = {
     parameters: [
         { name: 'ResultCode', description: 'Operation result code', type: 'UINT32' },
         { name: 'Result', description: 'Result value', type: 'UINT32' },
-        { name: 'Reserved', description: 'Reserved parameter', type: 'UINT32' }
+        { name: 'Reserved', description: 'Reserved parameter', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -263,7 +263,7 @@ export const SDIE_CautionDisplayEvent = {
     parameters: [
         { name: 'Reserve', description: 'Reserved parameter 1', type: 'UINT32' },
         { name: 'Reserve', description: 'Reserved parameter 2', type: 'UINT32' },
-        { name: 'Reserve', description: 'Reserved parameter 3', type: 'UINT32' }
+        { name: 'Reserve', description: 'Reserved parameter 3', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -280,7 +280,7 @@ export const SDIE_ContentInfoListChanged = {
     description: 'Notify that the ContentInfo List is changed',
     parameters: [
         { name: 'Slot Info', description: 'Slot information', type: 'UINT32' },
-        { name: 'Event Type', description: 'Event type', type: 'UINT32' }
+        { name: 'Event Type', description: 'Event type', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -304,7 +304,7 @@ export const SDIE_ControlPTZFResult = {
     description: 'Notify the ControlPTZF result',
     parameters: [
         { name: 'Result', description: 'Control PTZF result code', type: 'UINT32' },
-        { name: 'Control Type', description: 'Control type', type: 'UINT32' }
+        { name: 'Control Type', description: 'Control type', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -315,7 +315,7 @@ export const SDIE_PresetPTZFEvent = {
     parameters: [
         { name: 'Event Type', description: 'Event type', type: 'UINT32' },
         { name: 'Reserved', description: 'Reserved parameter 1', type: 'UINT32' },
-        { name: 'Reserved', description: 'Reserved parameter 2', type: 'UINT32' }
+        { name: 'Reserved', description: 'Reserved parameter 2', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -326,7 +326,7 @@ export const SDIE_DeleteContentResult = {
     parameters: [
         { name: 'Result', description: 'Delete content result code', type: 'UINT32' },
         { name: 'contentID', description: 'Content identifier', type: 'UINT32' },
-        { name: 'Slot Info', description: 'Slot information', type: 'UINT32' }
+        { name: 'Slot Info', description: 'Slot information', type: 'UINT32' },
     ],
 } as const satisfies EventDefinition
 
@@ -375,4 +375,4 @@ export const sonyEventRegistry = {
     SDIE_DeleteContentResult,
 } as const
 
-export type SonyEventDef = typeof sonyEventRegistry[keyof typeof sonyEventRegistry]
+export type SonyEventDef = (typeof sonyEventRegistry)[keyof typeof sonyEventRegistry]

@@ -1,9 +1,9 @@
 import { SonyCamera } from '@camera/sony-camera'
 import { Logger } from '@core/logger'
-import { USBTransport } from '@transport/usb/usb-transport'
 import * as Ops from '@ptp/definitions/operation-definitions'
 import * as SonyOps from '@ptp/definitions/vendors/sony/sony-operation-definitions'
 import * as SonyProps from '@ptp/definitions/vendors/sony/sony-property-definitions'
+import { USBTransport } from '@transport/usb/usb-transport'
 import { ObjectInfo } from 'src'
 
 const logger = new Logger({
@@ -19,18 +19,17 @@ const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
 async function main() {
     await camera.connect()
 
-
-    camera.on('ObjectAdded', (event) => {
+    camera.on('ObjectAdded', event => {
         console.log('ObjectAdded event:', event)
     })
 
-    camera.on('CaptureComplete', (event) => {
+    camera.on('CaptureComplete', event => {
         console.log('CaptureComplete event:', event)
     })
-    camera.on('StoreAdded', (event) => {
+    camera.on('StoreAdded', event => {
         console.log('StoreAdded event:', event)
     })
-    camera.on('StoreRemoved', (event) => {
+    camera.on('StoreRemoved', event => {
         console.log('StoreRemoved event:', event)
     })
 

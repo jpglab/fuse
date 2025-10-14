@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-import React from 'react'
 import { render } from 'ink'
+import { genericOperationRegistry } from '../../ptp/definitions/operation-definitions'
 import { Logger } from '../logger'
 import { InkSimpleLogger } from './ink-simple'
-import { genericOperationRegistry } from '../../ptp/definitions/operation-definitions'
 import { populateMockData } from './mock-data'
 
 const operationDefinitions = Object.values(genericOperationRegistry)

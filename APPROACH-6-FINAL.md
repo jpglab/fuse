@@ -15,6 +15,7 @@ This approach provides full type safety without assertions, excellent IntelliSen
 ### 1. Define Interfaces (The Schema)
 
 Create interfaces defining required structure for all PTP constructs:
+
 - `OperationDefinition` - schema for all operations (required: code, name, operationParameters, dataDirection; optional: description, dataCodec, responseParameters)
 - `PropertyDefinition` - schema for all properties (required: code, name, codec, access; optional: description, datatype)
 - `EventDefinition` - schema for all events
@@ -28,6 +29,7 @@ These act as contracts that all definitions must satisfy.
 Pattern: `as const satisfies OperationDefinition` (and PropertyDefinition, EventDefinition, etc.)
 
 Each definition:
+
 - Uses `as const` to preserve literal types (0x1001 stays 0x1001, not widened to number)
 - Uses `satisfies Interface` to validate structure against the schema
 - Includes JSDoc comments for IntelliSense documentation
@@ -38,6 +40,7 @@ Each definition:
 Pattern: `as const satisfies { [key: string]: Interface }`
 
 Registries collect definitions for ALL types:
+
 - Generic registries: operations, properties, events, formats, responses (standard PTP)
 - Vendor registries: Sony/Nikon definitions for all types
 - Vendor registries spread generic + vendor-specific definitions
@@ -48,6 +51,7 @@ Example vendor registry merge: `{ ...genericOperationRegistry, ...sonyOperations
 ### 4. Extract Union Types
 
 Use TypeScript to create union types from registries for ALL definition types:
+
 - `GenericOperationDef` = union of all generic operations
 - `SonyOperationDef` = union of generic + Sony operations
 - `NikonOperationDef` = union of generic + Nikon operations
@@ -58,14 +62,17 @@ Use TypeScript to create union types from registries for ALL definition types:
 Three camera classes with strict type constraints:
 
 **GenericCamera**
+
 - Accepts: `GenericOperationDef`, `GenericPropertyDef`
 - Methods: `send<Op extends GenericOperationDef>()`, `get<P extends GenericPropertyDef>()`, `set<P extends GenericPropertyDef>()`
 
 **SonyCamera**
+
 - Accepts: `SonyOperationDef`, `SonyPropertyDef`
 - Methods: Same pattern with Sony type constraints
 
 **NikonCamera**
+
 - Accepts: `NikonOperationDef`, `NikonPropertyDef`
 - Methods: Same pattern with Nikon type constraints
 
@@ -80,6 +87,7 @@ Import entire namespaces and access with dot notation for excellent discoverabil
 ### Problem with Type Annotations
 
 Using `: OperationDefinition` widens types:
+
 - `code: 0x1001` becomes `code: number`
 - `name: "GetDeviceInfo"` becomes `name: string`
 - Type inference breaks completely
@@ -87,6 +95,7 @@ Using `: OperationDefinition` widens types:
 ### Solution with `satisfies`
 
 Using `as const satisfies OperationDefinition`:
+
 - ✅ Validates structure against interface
 - ✅ Preserves exact literal types
 - ✅ Type inference works perfectly
@@ -95,6 +104,7 @@ Using `as const satisfies OperationDefinition`:
 ## Type Safety Guarantees
 
 ### Camera Hierarchy
+
 - GenericCamera only accepts generic operations/properties/events/formats/responses
 - SonyCamera accepts generic + Sony for all definition types
 - NikonCamera accepts generic + Nikon for all definition types
@@ -102,18 +112,21 @@ Using `as const satisfies OperationDefinition`:
 - Cannot pass wrong vendor definitions to any camera
 
 ### Parameter Validation
+
 - Missing required parameters caught at compile time
 - Wrong parameter types caught (number vs string, etc.)
 - Invalid parameter names caught (typos like `sessionId` vs `SessionID`)
 - Extra/unexpected parameters caught
 
 ### Property Validation
+
 - Wrong property value types caught at compile time
 - Wrong variable type assignments caught
 - Type inference provides correct return types
 - Cannot get/set properties camera doesn't support
 
 ### Definition Validation
+
 - Missing required fields caught by `satisfies`
 - Wrong field types caught by `satisfies`
 - Structure validated against interface
@@ -124,7 +137,9 @@ Using `as const satisfies OperationDefinition`:
 ## IntelliSense Benefits
 
 ### Hover Information
+
 When hovering over a const definition:
+
 - Full structure visible
 - JSDoc comments shown
 - Exact literal types displayed
@@ -132,14 +147,18 @@ When hovering over a const definition:
 - Return type indicated
 
 ### Autocomplete
+
 When typing namespace prefix:
+
 - List of valid operations/properties shown
 - Each item shows description
 - Type hints guide usage
 - Invalid options not shown
 
 ### IDE Features
+
 All IDE features work perfectly:
+
 - Jump to definition
 - Find all usages
 - Rename refactoring
@@ -192,27 +211,33 @@ Applies to all 5 definition types: operations, properties, events, formats, resp
 ## Migration Path
 
 ### Phase 1: Interfaces
+
 Create all PTP definition interfaces in types directory:
+
 - `OperationDefinition`, `PropertyDefinition`
 - `EventDefinition`, `FormatDefinition`, `ResponseDefinition`
 
 ### Phase 2: Pilot Migration
+
 - Convert one definition file to use `satisfies` pattern
 - Create registry with `satisfies { [key: string]: Interface }`
 - Extract union type from registry
 - Verify types work correctly
 
 ### Phase 3: Camera Update
+
 - Update one camera class to use type constraints
 - Test with migrated definitions
 - Verify error cases work as expected
 
 ### Phase 4: Full Migration
+
 - Migrate remaining definition files
 - Update all camera classes
 - Test complete camera hierarchy
 
 ### Phase 5: Usage Update
+
 - Update imports to namespace style
 - Replace string usage with consts
 - Verify IntelliSense works as expected
@@ -220,24 +245,28 @@ Create all PTP definition interfaces in types directory:
 ## Key Benefits
 
 ### Type Safety
+
 - Zero type assertions needed in camera implementations
 - Full compile-time validation of all usage
 - Camera hierarchy automatically enforced
 - No runtime type errors possible
 
 ### Developer Experience
+
 - Excellent IntelliSense with rich hover information
 - Autocomplete shows all available operations with descriptions
 - IDE refactoring works (rename, find usages)
 - Self-documenting code
 
 ### Maintainability
+
 - Interfaces are single source of truth for structure
 - Easy to add new operations/properties
 - Clear file organization by vendor
 - Consistent patterns throughout
 
 ### Performance
+
 - Zero runtime overhead
 - All type information erased at compile time
 - Direct object access (no .find() lookups)
@@ -252,6 +281,7 @@ Create all PTP definition interfaces in types directory:
 ## Example File
 
 See **`approach-6-complete-example.ts`** for a complete, working implementation demonstrating:
+
 - ✅ All 5 interface definitions (OperationDefinition, PropertyDefinition, EventDefinition, FormatDefinition, ResponseDefinition)
 - ✅ Generic definitions for all types with `satisfies`
 - ✅ Sony vendor extensions for all types (operations, properties, events, formats, responses)
@@ -291,6 +321,7 @@ grep -n "^export class" approach-6-complete-example.ts
 ## Result
 
 A fully type-safe system where:
+
 - All 5 PTP definition types use consistent patterns (operations, properties, events, formats, responses)
 - Definitions validated at compile time by `satisfies`
 - Vendor extensions demonstrated for all definition types (Sony examples for all 5)
@@ -306,23 +337,28 @@ A fully type-safe system where:
 ## Definition Types Covered
 
 ### ✅ Operations
+
 - Generic: GetDeviceInfo, OpenSession, GetStorageInfo
 - Sony: SDIO_OpenSession, SDIO_GetExtDevicePropValue
 - Nikon: GetDevicePropDescEx
 
 ### ✅ Properties
+
 - Generic: BatteryLevel, ImageSize, FNumber
 - Sony: LiveViewImageQuality
 
 ### ✅ Events
+
 - Generic: ObjectAdded, DevicePropChanged
 - Sony: SDIE_CapturedEvent, SDIE_ObjectAdded
 
 ### ✅ Formats
+
 - Generic: JPEG, MP4
 - Sony: RAW, HEIF
 
 ### ✅ Responses
+
 - Generic: OK, GeneralError, SessionNotOpen
 - Sony: AuthenticationFailed, TemporaryStorageFull
 

@@ -1,14 +1,13 @@
-import React from 'react'
 import { Box, Text } from 'ink'
 import Spinner from 'ink-spinner'
-import { OperationDefinition } from '../../ptp/types/operation'
-import { Logger, Log, PTPOperationLog, USBTransferLog, PTPTransferLog, ConsoleLog } from '../logger'
+import React from 'react'
 import { responseRegistry } from '../../ptp/definitions/response-definitions'
+import { ConsoleLog, Logger, PTPOperationLog, PTPTransferLog, USBTransferLog } from '../logger'
+import { formatBytes } from './formatters/bytes-formatter'
+import { formatJSON } from './formatters/compact-formatter'
+import { safeStringify } from './formatters/safe-stringify'
 
 const responseDefinitions = Object.values(responseRegistry)
-import { formatJSON } from './formatters/compact-formatter'
-import { formatBytes } from './formatters/bytes-formatter'
-import { safeStringify } from './formatters/safe-stringify'
 
 interface InkSimpleLoggerProps {
     logger: Logger
@@ -24,9 +23,7 @@ interface TransactionGroup {
     timestamp: number
 }
 
-export function InkSimpleLogger({
-    logger,
-}: InkSimpleLoggerProps) {
+export function InkSimpleLogger({ logger }: InkSimpleLoggerProps) {
     // Force re-render when logger changes
     const [updateCount, forceUpdate] = React.useReducer(x => x + 1, 0)
 
@@ -90,7 +87,10 @@ export function InkSimpleLogger({
                         error: 'red',
                     } as const
                     const color = colorMap[consoleLog.consoleLevel]
-                    const levelLabel = consoleLog.consoleLevel === 'log' ? 'Debug' : consoleLog.consoleLevel.charAt(0).toUpperCase() + consoleLog.consoleLevel.slice(1)
+                    const levelLabel =
+                        consoleLog.consoleLevel === 'log'
+                            ? 'Debug'
+                            : consoleLog.consoleLevel.charAt(0).toUpperCase() + consoleLog.consoleLevel.slice(1)
                     const formatted = consoleLog.args
                         .map(arg => (typeof arg === 'object' ? safeStringify(arg) : String(arg)))
                         .join(' ')
@@ -109,7 +109,9 @@ export function InkSimpleLogger({
                         <Box key={group.key} flexDirection="column">
                             <Text>
                                 <Text bold>{timestamp} [</Text>
-                                <Text color={color} bold>{levelLabel}</Text>
+                                <Text color={color} bold>
+                                    {levelLabel}
+                                </Text>
                                 <Text bold>] </Text>
                                 <Text>{formatted}</Text>
                             </Text>
@@ -136,7 +138,8 @@ export function InkSimpleLogger({
                 let duration: number
                 let dataPhaseTime: number
                 let responsePhaseTime: number
-                let transferChunks: Array<{ transactionId: number; timestamp: number; offset: number; bytes: number }> = []
+                let transferChunks: Array<{ transactionId: number; timestamp: number; offset: number; bytes: number }> =
+                    []
                 let totalBytes = 0
                 let transferredBytes = 0
 
@@ -155,7 +158,10 @@ export function InkSimpleLogger({
                 } else {
                     duration = endTime - startTime
                     dataPhaseTime = ptpLog.dataPhase ? ptpLog.dataPhase.timestamp - ptpLog.requestPhase.timestamp : 0
-                    responsePhaseTime = ptpLog.responsePhase ? ptpLog.responsePhase.timestamp - (ptpLog.dataPhase?.timestamp || ptpLog.requestPhase.timestamp) : 0
+                    responsePhaseTime = ptpLog.responsePhase
+                        ? ptpLog.responsePhase.timestamp -
+                          (ptpLog.dataPhase?.timestamp || ptpLog.requestPhase.timestamp)
+                        : 0
                 }
 
                 // Format timestamp
@@ -176,39 +182,56 @@ export function InkSimpleLogger({
                         {/* Header */}
                         <Box>
                             <Text bold>{timestamp} </Text>
-                            <Text color="blue" bold>{operationName} </Text>
+                            <Text color="blue" bold>
+                                {operationName}{' '}
+                            </Text>
                             <Text bold>{isRunning ? 'running' : 'ran for'} </Text>
                             {isRunning ? (
-                                <Text color="magenta" bold><Spinner type="dots" /> </Text>
+                                <Text color="magenta" bold>
+                                    <Spinner type="dots" />{' '}
+                                </Text>
                             ) : (
                                 <>
-                                    <Text color="magenta" bold>{duration}ms </Text>
-                                    <Text color={statusColor} bold>{statusSymbol}</Text>
+                                    <Text color="magenta" bold>
+                                        {duration}ms{' '}
+                                    </Text>
+                                    <Text color={statusColor} bold>
+                                        {statusSymbol}
+                                    </Text>
                                 </>
                             )}
                         </Box>
-                        <Text dimColor>  ├─ Session 0x{group.sessionId!.toString(16)}, transaction {group.transactionId}</Text>
-                        <Text dimColor>  │</Text>
+                        <Text dimColor>
+                            {' '}
+                            ├─ Session 0x{group.sessionId!.toString(16)}, transaction {group.transactionId}
+                        </Text>
+                        <Text dimColor> │</Text>
 
                         {/* Request Phase */}
                         <Text>
-                            <Text dimColor>  {ptpLog.dataPhase || ptpLog.responsePhase ? '├─' : '└─'} </Text>
+                            <Text dimColor> {ptpLog.dataPhase || ptpLog.responsePhase ? '├─' : '└─'} </Text>
                             <Text>Sent </Text>
-                            <Text color="blue" bold>request</Text>
+                            <Text color="blue" bold>
+                                request
+                            </Text>
                             <Text> in </Text>
-                            <Text color="magenta" bold>0ms</Text>
+                            <Text color="magenta" bold>
+                                0ms
+                            </Text>
                         </Text>
                         {Object.keys(ptpLog.requestPhase.decodedParams).length === 0 ? (
-                            <Text><Text dimColor>  │</Text>    (no parameters)</Text>
+                            <Text>
+                                <Text dimColor> │</Text> (no parameters)
+                            </Text>
                         ) : (
                             Object.entries(ptpLog.requestPhase.decodedParams).map(([key, value]) => {
                                 // Format numeric values as hex
-                                const formattedValue = typeof value === 'number'
-                                    ? `0x${value.toString(16)}`
-                                    : safeStringify(value)
+                                const formattedValue =
+                                    typeof value === 'number' ? `0x${value.toString(16)}` : safeStringify(value)
                                 return (
                                     <Text key={key}>
-                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>    {key} set to {formattedValue}
+                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                        {key} set to {formattedValue}
                                     </Text>
                                 )
                             })
@@ -220,7 +243,8 @@ export function InkSimpleLogger({
                                     .join(' ')
                                 return (
                                     <Text key={idx}>
-                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>    Bytes encoded as [{hex}
+                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                        Bytes encoded as [{hex}
                                         {encoded.length > 16 ? '...' : ''}]
                                     </Text>
                                 )
@@ -229,12 +253,15 @@ export function InkSimpleLogger({
                         {!config.collapseUSB &&
                             group.usbLogs
                                 .filter(u => u.phase === 'request')
-                                .map((usbLog) => {
+                                .map(usbLog => {
                                     const direction = usbLog.direction === 'send' ? 'to' : 'from'
                                     return (
                                         <Text key={usbLog.id}>
-                                            <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>    Transferred {formatBytes(usbLog.bytes)} via USB {direction} {usbLog.endpoint}{' '}
-                                            {usbLog.endpointAddress}
+                                            <Text dimColor>
+                                                {ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}
+                                            </Text>{' '}
+                                            Transferred {formatBytes(usbLog.bytes)} via USB {direction}{' '}
+                                            {usbLog.endpoint} {usbLog.endpointAddress}
                                         </Text>
                                     )
                                 })}
@@ -242,53 +269,61 @@ export function InkSimpleLogger({
                         {/* Data Phase */}
                         {ptpLog.dataPhase ? (
                             <>
-                                <Text dimColor>  │</Text>
+                                <Text dimColor> │</Text>
                                 <Text>
-                                    <Text dimColor>  {ptpLog.responsePhase ? '├─' : '└─'} </Text>
+                                    <Text dimColor> {ptpLog.responsePhase ? '├─' : '└─'} </Text>
                                     <Text>{ptpLog.dataPhase.direction === 'in' ? 'Sent' : 'Received'} </Text>
-                                    <Text color="blue" bold>data</Text>
+                                    <Text color="blue" bold>
+                                        data
+                                    </Text>
                                     <Text> in </Text>
-                                    <Text color="magenta" bold>{dataPhaseTime}ms</Text>
+                                    <Text color="magenta" bold>
+                                        {dataPhaseTime}ms
+                                    </Text>
                                 </Text>
                                 {/* Progress bar for transfer logs */}
-                                {ptpLog.type === 'ptp_transfer' && (() => {
-                                    // TypeScript narrows to PTPTransferLog
-                                    const percent = totalBytes > 0
-                                        ? (transferredBytes / totalBytes) * 100
-                                        : 0
-                                    const barLength = 30
-                                    const filledLength = Math.round((percent / 100) * barLength)
-                                    const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength)
+                                {ptpLog.type === 'ptp_transfer' &&
+                                    (() => {
+                                        // TypeScript narrows to PTPTransferLog
+                                        const percent = totalBytes > 0 ? (transferredBytes / totalBytes) * 100 : 0
+                                        const barLength = 30
+                                        const filledLength = Math.round((percent / 100) * barLength)
+                                        const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength)
 
-                                    // Calculate average chunk size
-                                    const avgChunkSize = transferChunks.length > 0
-                                        ? transferredBytes / transferChunks.length
-                                        : 0
+                                        // Calculate average chunk size
+                                        const avgChunkSize =
+                                            transferChunks.length > 0 ? transferredBytes / transferChunks.length : 0
 
-                                    // Calculate speed from last chunk
-                                    let speedText = ''
-                                    if (transferChunks.length >= 2) {
-                                        const lastChunk = transferChunks[transferChunks.length - 1]
-                                        const prevChunk = transferChunks[transferChunks.length - 2]
-                                        const timeDiff = (lastChunk.timestamp - prevChunk.timestamp) / 1000 // seconds
-                                        if (timeDiff > 0) {
-                                            const bytesPerSecond = lastChunk.bytes / timeDiff
-                                            speedText = `${formatBytes(bytesPerSecond, 1)}/s`
+                                        // Calculate speed from last chunk
+                                        let speedText = ''
+                                        if (transferChunks.length >= 2) {
+                                            const lastChunk = transferChunks[transferChunks.length - 1]
+                                            const prevChunk = transferChunks[transferChunks.length - 2]
+                                            const timeDiff = (lastChunk.timestamp - prevChunk.timestamp) / 1000 // seconds
+                                            if (timeDiff > 0) {
+                                                const bytesPerSecond = lastChunk.bytes / timeDiff
+                                                speedText = `${formatBytes(bytesPerSecond, 1)}/s`
+                                            }
                                         }
-                                    }
 
-                                    return (
-                                        <>
-                                            <Text>
-                                                <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>    <Text color="blue">{bar}</Text>
-                                                <Text> {percent.toFixed(1)}%</Text>
-                                            </Text>
-                                            <Text>
-                                                <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>    <Text>{speedText} ({formatBytes(totalBytes)} total, {transferChunks.length} chunks @ {formatBytes(avgChunkSize, 0)} each)</Text>
-                                            </Text>
-                                        </>
-                                    )
-                                })()}
+                                        return (
+                                            <>
+                                                <Text>
+                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    <Text color="blue">{bar}</Text>
+                                                    <Text> {percent.toFixed(1)}%</Text>
+                                                </Text>
+                                                <Text>
+                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    <Text>
+                                                        {speedText} ({formatBytes(totalBytes)} total,{' '}
+                                                        {transferChunks.length} chunks @ {formatBytes(avgChunkSize, 0)}{' '}
+                                                        each)
+                                                    </Text>
+                                                </Text>
+                                            </>
+                                        )
+                                    })()}
                                 {config.showDecodedData &&
                                     ptpLog.dataPhase.decodedData !== undefined &&
                                     ptpLog.dataPhase.decodedData !== null &&
@@ -298,13 +333,13 @@ export function InkSimpleLogger({
 
                                         return formattedLines.map((line, idx) => (
                                             <Text key={idx}>
-                                                <Text dimColor>{prefix}</Text>    {line}
+                                                <Text dimColor>{prefix}</Text> {line}
                                             </Text>
                                         ))
                                     })()}
                                 {config.showEncodedData && ptpLog.dataPhase.encodedData && (
                                     <Text>
-                                        <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>    Bytes encoded as [
+                                        <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text> Bytes encoded as [
                                         {Array.from(ptpLog.dataPhase.encodedData.slice(0, 16))
                                             .map(b => b.toString(16).padStart(2, '0'))
                                             .join(' ')}
@@ -312,46 +347,53 @@ export function InkSimpleLogger({
                                     </Text>
                                 )}
                                 {/* USB transfers for data phase */}
-                                {!config.collapseUSB && (() => {
-                                    const dataUsbLogs = group.usbLogs.filter(u => u.phase === 'data')
+                                {!config.collapseUSB &&
+                                    (() => {
+                                        const dataUsbLogs = group.usbLogs.filter(u => u.phase === 'data')
 
-                                    // For transfer logs, show aggregate USB stats across all chunks
-                                    if (ptpLog.type === 'ptp_transfer' && dataUsbLogs.length > 0) {
-                                        // TypeScript narrows to PTPTransferLog
-                                        const aggTransferredBytes = transferredBytes
-                                        const direction = dataUsbLogs[0].direction === 'send' ? 'to' : 'from'
-                                        const endpoint = dataUsbLogs[0].endpoint
-                                        const endpointAddress = dataUsbLogs[0].endpointAddress
+                                        // For transfer logs, show aggregate USB stats across all chunks
+                                        if (ptpLog.type === 'ptp_transfer' && dataUsbLogs.length > 0) {
+                                            // TypeScript narrows to PTPTransferLog
+                                            const aggTransferredBytes = transferredBytes
+                                            const direction = dataUsbLogs[0].direction === 'send' ? 'to' : 'from'
+                                            const endpoint = dataUsbLogs[0].endpoint
+                                            const endpointAddress = dataUsbLogs[0].endpointAddress
 
-                                        return (
-                                            <Text key="aggregate-usb">
-                                                <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>    Transferred {formatBytes(totalBytes)} via USB {direction} {endpoint}{' '}
-                                                {endpointAddress}
-                                            </Text>
-                                        )
-                                    }
+                                            return (
+                                                <Text key="aggregate-usb">
+                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    Transferred {formatBytes(totalBytes)} via USB {direction} {endpoint}{' '}
+                                                    {endpointAddress}
+                                                </Text>
+                                            )
+                                        }
 
-                                    // For regular operations, show individual USB transfers
-                                    return dataUsbLogs.map((usbLog) => {
-                                        const direction = usbLog.direction === 'send' ? 'to' : 'from'
-                                        return (
-                                            <Text key={usbLog.id}>
-                                                <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>    Transferred {formatBytes(usbLog.bytes)} via USB {direction} {usbLog.endpoint}{' '}
-                                                {usbLog.endpointAddress}
-                                            </Text>
-                                        )
-                                    })
-                                })()}
+                                        // For regular operations, show individual USB transfers
+                                        return dataUsbLogs.map(usbLog => {
+                                            const direction = usbLog.direction === 'send' ? 'to' : 'from'
+                                            return (
+                                                <Text key={usbLog.id}>
+                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    Transferred {formatBytes(usbLog.bytes)} via USB {direction}{' '}
+                                                    {usbLog.endpoint} {usbLog.endpointAddress}
+                                                </Text>
+                                            )
+                                        })
+                                    })()}
                             </>
                         ) : !ptpLog.responsePhase ? (
                             <>
-                                <Text dimColor>  │</Text>
+                                <Text dimColor> │</Text>
                                 <Text>
-                                    <Text dimColor>  └─ </Text>
+                                    <Text dimColor> └─ </Text>
                                     <Text>Receiving </Text>
-                                    <Text color="blue" bold>data</Text>
+                                    <Text color="blue" bold>
+                                        data
+                                    </Text>
                                     <Text> </Text>
-                                    <Text color="magenta" bold><Spinner type="dots" /></Text>
+                                    <Text color="magenta" bold>
+                                        <Spinner type="dots" />
+                                    </Text>
                                 </Text>
                             </>
                         ) : null}
@@ -359,18 +401,25 @@ export function InkSimpleLogger({
                         {/* Response Phase */}
                         {ptpLog.responsePhase ? (
                             <>
-                                <Text dimColor>  │</Text>
+                                <Text dimColor> │</Text>
                                 <Text>
-                                    <Text dimColor>  └─ </Text>
+                                    <Text dimColor> └─ </Text>
                                     <Text>Received </Text>
-                                    <Text color={hasError ? 'red' : 'green'} bold>response</Text>
+                                    <Text color={hasError ? 'red' : 'green'} bold>
+                                        response
+                                    </Text>
                                     <Text> in </Text>
-                                    <Text color="magenta" bold>{responsePhaseTime}ms</Text>
+                                    <Text color="magenta" bold>
+                                        {responsePhaseTime}ms
+                                    </Text>
                                 </Text>
                                 <Text>
-                                    {'       '}Response code: {hasError ? 'error' : 'ok'} (0x{ptpLog.responsePhase.code.toString(16)})
+                                    {'       '}Response code: {hasError ? 'error' : 'ok'} (0x
+                                    {ptpLog.responsePhase.code.toString(16)})
                                     {(() => {
-                                        const responseDef = responseDefinitions.find(r => r.code === ptpLog.responsePhase!.code)
+                                        const responseDef = responseDefinitions.find(
+                                            r => r.code === ptpLog.responsePhase!.code
+                                        )
                                         return responseDef ? ` - ${responseDef.description}` : ''
                                     })()}
                                 </Text>
@@ -378,25 +427,29 @@ export function InkSimpleLogger({
                                 {!config.collapseUSB &&
                                     group.usbLogs
                                         .filter(u => u.phase === 'response')
-                                        .map((usbLog) => {
+                                        .map(usbLog => {
                                             const direction = usbLog.direction === 'send' ? 'to' : 'from'
                                             return (
                                                 <Text key={usbLog.id}>
-                                                    {'       '}Transferred {formatBytes(usbLog.bytes)} via USB {direction} {usbLog.endpoint}{' '}
-                                                    {usbLog.endpointAddress}
+                                                    {'       '}Transferred {formatBytes(usbLog.bytes)} via USB{' '}
+                                                    {direction} {usbLog.endpoint} {usbLog.endpointAddress}
                                                 </Text>
                                             )
                                         })}
                             </>
                         ) : (
                             <>
-                                <Text dimColor>  │</Text>
+                                <Text dimColor> │</Text>
                                 <Text>
-                                    <Text dimColor>  └─ </Text>
+                                    <Text dimColor> └─ </Text>
                                     <Text>Receiving </Text>
-                                    <Text color="blue" bold>response</Text>
+                                    <Text color="blue" bold>
+                                        response
+                                    </Text>
                                     <Text> </Text>
-                                    <Text color="magenta" bold><Spinner type="dots" /></Text>
+                                    <Text color="magenta" bold>
+                                        <Spinner type="dots" />
+                                    </Text>
                                 </Text>
                             </>
                         )}

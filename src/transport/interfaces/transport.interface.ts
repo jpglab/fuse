@@ -5,7 +5,7 @@
 import { DeviceDescriptor } from './device.interface'
 import { TransportType } from './transport-types'
 
-export { TransportType, DeviceDescriptor }
+export { DeviceDescriptor, TransportType }
 
 export interface PTPEvent {
     code: number

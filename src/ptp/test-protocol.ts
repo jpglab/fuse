@@ -4,23 +4,30 @@
  */
 
 import { GenericCamera } from '@camera/generic-camera'
+import { formatRegistry } from '@ptp/definitions/format-definitions'
 import { genericOperationRegistry } from '@ptp/definitions/operation-definitions'
 import { genericPropertyRegistry } from '@ptp/definitions/property-definitions'
 import { responseRegistry } from '@ptp/definitions/response-definitions'
-import { formatRegistry } from '@ptp/definitions/format-definitions'
 
 const operationDefinitions = Object.values(genericOperationRegistry)
 const propertyDefinitions = Object.values(genericPropertyRegistry)
 const responseDefinitions = Object.values(responseRegistry)
 const formatDefinitions = Object.values(formatRegistry)
 
-import type { TransportInterface } from '@transport/interfaces/transport.interface'
 import type { Logger } from '@core/logger'
+import type { TransportInterface } from '@transport/interfaces/transport.interface'
 
 // Mock transport
 declare const mockTransport: TransportInterface
 declare const mockLogger: Logger
-const camera = new GenericCamera(mockTransport, mockLogger, operationDefinitions, propertyDefinitions, responseDefinitions, formatDefinitions)
+const camera = new GenericCamera(
+    mockTransport,
+    mockLogger,
+    operationDefinitions,
+    propertyDefinitions,
+    responseDefinitions,
+    formatDefinitions
+)
 
 async function testAutomaticTypeInference() {
     console.log('Testing automatic type inference from definitions...\n')
