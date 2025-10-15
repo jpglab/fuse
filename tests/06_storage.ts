@@ -19,17 +19,17 @@ const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
 async function main() {
     await camera.connect()
 
-    camera.on('ObjectAdded', event => {
+    camera.on(camera.registry.events.ObjectAdded, event => {
         console.log('ObjectAdded event:', event)
     })
 
-    camera.on('CaptureComplete', event => {
+    camera.on(camera.registry.events.CaptureComplete, event => {
         console.log('CaptureComplete event:', event)
     })
-    camera.on('StoreAdded', event => {
+    camera.on(camera.registry.events.StoreAdded, event => {
         console.log('StoreAdded event:', event)
     })
-    camera.on('StoreRemoved', event => {
+    camera.on(camera.registry.events.StoreRemoved, event => {
         console.log('StoreRemoved event:', event)
     })
 

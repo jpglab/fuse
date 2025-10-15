@@ -1,23 +1,25 @@
 import { Logger, PTPTransferLog } from '@core/logger'
 import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
+import { SessionAlreadyOpen } from '@ptp/definitions/response-definitions'
+import { randomSessionId } from '@ptp/definitions/session'
 import { createPTPRegistry, Registry } from '@ptp/registry'
 import type { CodecDefinition, CodecInstance, CodecType } from '@ptp/types/codec'
 import type { EventData } from '@ptp/types/event'
 import { EventEmitter } from '@ptp/types/event'
 import type { OperationDefinition } from '@ptp/types/operation'
 import type { PropertyDefinition } from '@ptp/types/property'
-import { OperationParams, OperationResponse } from '@ptp/types/type-helpers'
+import { EventNames, OperationParams, OperationResponse } from '@ptp/types/type-helpers'
 import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
 
 export class GenericCamera {
     protected emitter = new EventEmitter()
-    public sessionId: number | null = null
     public vendorId: number | null = null
+    public sessionId = 0
     private transactionId = 0
     public transport: TransportInterface
     protected logger: Logger
-    protected registry: Registry
+    public registry: Registry
 
     constructor(transport: TransportInterface, logger: Logger) {
         this.transport = transport
@@ -34,10 +36,10 @@ export class GenericCamera {
             await this.transport.connect({ ...deviceIdentifier, ...(this.vendorId && { vendorId: this.vendorId }) })
         }
 
-        this.sessionId = Math.floor(Math.random() * 0xffffffff)
+        this.sessionId = randomSessionId()
         const openResult = await this.send(this.registry.operations.OpenSession, { SessionID: this.sessionId })
 
-        if (openResult.code === 0x201e) {
+        if (openResult.code === SessionAlreadyOpen.code) {
             await this.send(this.registry.operations.CloseSession, {})
             await this.send(this.registry.operations.OpenSession, { SessionID: this.sessionId })
         }
@@ -50,7 +52,7 @@ export class GenericCamera {
             await this.send(this.registry.operations.CloseSession, {})
         }
 
-        this.sessionId = null
+        this.sessionId = 0
         await this.transport.disconnect()
     }
 
@@ -168,9 +170,7 @@ export class GenericCamera {
             ) {
                 const propCode = paramsRecord.DevicePropCode
                 if (propCode !== undefined) {
-                    const property = Object.values(this.registry.properties).find(
-                        (p: any) => p.code === propCode
-                    )
+                    const property = Object.values(this.registry.properties).find((p: any) => p.code === propCode)
                     if (property) {
                         const codec = this.resolveCodec(property.codec)
                         const result = codec.decode(receivedData)
@@ -292,23 +292,16 @@ export class GenericCamera {
         await this.send(this.registry.operations.SetDevicePropValue, { DevicePropCode: property.code }, encodedValue)
     }
 
-    on(eventName: string, handler: (event: EventData) => void): void {
-        this.emitter.on(eventName, handler)
+    on<E extends { name: string }>(event: E, handler: (event: EventData) => void): void {
+        this.emitter.on(event.name, handler)
     }
 
-    off(eventName: string, handler?: (event: EventData) => void): void {
+    off<E extends { name: string }>(event: E, handler?: (event: EventData) => void): void {
         if (handler) {
-            this.emitter.off(eventName, handler)
+            this.emitter.off(event.name, handler)
         } else {
-            this.emitter.removeAllListeners(eventName)
+            this.emitter.removeAllListeners(event.name)
         }
-    }
-
-    protected handleEvent(event: PTPEvent): void {
-        const eventDef = Object.values(this.registry.events).find((e: any) => e.code === event.code)
-        if (!eventDef) return
-
-        this.emitter.emit(eventDef.name, event.parameters)
     }
 
     async getAperture(): Promise<string> {
@@ -350,6 +343,22 @@ export class GenericCamera {
 
     async stopRecording(): Promise<void> {
         throw new Error('Video recording not supported on generic PTP cameras')
+    }
+
+    public resolveCodec<T>(codec: CodecDefinition<T> | CodecDefinition<any>): CodecInstance<T> {
+        if (typeof codec === 'function') {
+            return codec(this.registry)
+        }
+
+        return codec
+    }
+
+    protected handleEvent(event: PTPEvent): void {
+        const eventDef = Object.values(this.registry.events).find((e: any) => e.code === event.code)
+        console.log('Event Received:', eventDef, event.parameters)
+        if (!eventDef) return
+
+        this.emitter.emit(eventDef.name, event.parameters)
     }
 
     private getNextTransactionId(): number {
@@ -441,13 +450,5 @@ export class GenericCamera {
         const payload = data.slice(offset)
 
         return { type, code, transactionId, payload }
-    }
-
-    public resolveCodec<T>(codec: CodecDefinition<T> | CodecDefinition<any>): CodecInstance<T> {
-        if (typeof codec === 'function') {
-            return codec(this.registry)
-        }
-
-        return codec
     }
 }

@@ -18,3 +18,5 @@ export type OperationResponse<Op> = Op extends { dataCodec: infer C }
     : Op extends { dataDirection: 'out' }
       ? { code: number; data: Uint8Array }
       : { code: number }
+
+export type EventNames<Events extends { [key: string]: { name: string } }> = Events[keyof Events]['name']

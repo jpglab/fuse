@@ -1,9 +1,9 @@
 import { DevicePropDescCodec } from '@ptp/datasets/device-prop-desc-dataset'
 import { NikonLiveViewDatasetCodec } from '@ptp/datasets/vendors/nikon/nikon-live-view-dataset'
+import { getDatatypeByName } from '@ptp/definitions/datatype-definitions'
 import { baseCodecs, EnumCodec } from '@ptp/types/codec'
 import { OperationDefinition } from '@ptp/types/operation'
 import { PropertyDefinition } from '@ptp/types/property'
-import { getDatatypeByName } from '@ptp/definitions/datatype-definitions'
 
 const UINT8 = getDatatypeByName('UINT8')!.code
 
@@ -14,11 +14,15 @@ export const ISOAutoControl = {
     description: 'ISO sensitivity settings – Auto ISO sensitivity control',
     datatype: UINT8,
     access: 'GetSet',
-    codec: (registry) =>
-        new EnumCodec(registry, [
-            { value: 0, name: 'OFF', description: 'Auto ISO control disabled' },
-            { value: 1, name: 'ON', description: 'Auto ISO control enabled' },
-        ], registry.codecs.uint8),
+    codec: registry =>
+        new EnumCodec(
+            registry,
+            [
+                { value: 0, name: 'OFF', description: 'Auto ISO control disabled' },
+                { value: 1, name: 'ON', description: 'Auto ISO control enabled' },
+            ],
+            registry.codecs.uint8
+        ),
 } as const satisfies PropertyDefinition
 
 export const GetPartialObjectEx = {

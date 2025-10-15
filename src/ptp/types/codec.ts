@@ -54,12 +54,12 @@ export abstract class CustomCodec<T> implements CodecInstance<T> {
     abstract decode(buffer: Uint8Array, offset?: number): { value: T; bytesRead: number }
 }
 
-export class EnumCodec<T> extends CustomCodec<string> {
+export class EnumCodec<T, Names extends string = string> extends CustomCodec<Names> {
     private readonly valueToName = new Map<T, EnumValue<T>>()
     private readonly nameToValue = new Map<string, EnumValue<T>>()
     private readonly baseCodec: CodecInstance<T>
 
-    constructor(registry: PTPRegistry, values: EnumValue<T>[], baseCodec: CodecInstance<T>) {
+    constructor(registry: PTPRegistry, values: readonly EnumValue<T>[], baseCodec: CodecInstance<T>) {
         super(registry)
         this.baseCodec = baseCodec
         for (const enumValue of values) {
@@ -68,7 +68,7 @@ export class EnumCodec<T> extends CustomCodec<string> {
         }
     }
 
-    encode(value: string): Uint8Array {
+    encode(value: Names): Uint8Array {
         if (typeof value === 'string') {
             const enumValue = this.nameToValue.get(value)
             if (!enumValue) {
@@ -82,13 +82,13 @@ export class EnumCodec<T> extends CustomCodec<string> {
         return this.baseCodec.encode(value)
     }
 
-    decode(buffer: Uint8Array, offset = 0): { value: string; bytesRead: number } {
+    decode(buffer: Uint8Array, offset = 0): { value: Names; bytesRead: number } {
         const result = this.baseCodec.decode(buffer, offset)
         const enumValue = this.valueToName.get(result.value)
         if (!enumValue) {
             throw new Error(`Invalid enum value: ${result.value}`)
         }
-        return { value: enumValue.name, bytesRead: result.bytesRead }
+        return { value: enumValue.name as Names, bytesRead: result.bytesRead }
     }
 
     getEnumValue(value: T): EnumValue<T> | undefined {
@@ -102,6 +102,15 @@ export class EnumCodec<T> extends CustomCodec<string> {
     getAllValues(): EnumValue<T>[] {
         return Array.from(this.valueToName.values())
     }
+}
+
+// Helper function to create a typed EnumCodec with inferred enum names
+export function createEnumCodec<T, const Values extends readonly EnumValue<T>[]>(
+    registry: PTPRegistry,
+    values: Values,
+    baseCodec: CodecInstance<T>
+): EnumCodec<T, Values[number]['name']> {
+    return new EnumCodec<T, Values[number]['name']>(registry, values, baseCodec)
 }
 
 export interface RangeSpec<T> {

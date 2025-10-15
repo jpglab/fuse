@@ -23,5 +23,5 @@
             "@ptp/*": ["src/ptp/*"]
         }
     },
-    "include": ["src", "tests", "scripts", "examples", "*.config.ts"],
+    "include": ["src", "tests", "scripts", "examples", "*.config.ts"]
 }

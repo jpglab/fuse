@@ -1,5 +1,5 @@
 import { SDIExtDevicePropInfoCodec } from '@ptp/datasets/vendors/sony/sdi-ext-device-prop-info-dataset'
-import { EnumCodec, baseCodecs } from '@ptp/types/codec'
+import { baseCodecs, createEnumCodec } from '@ptp/types/codec'
 import { OperationDefinition } from '@ptp/types/operation'
 
 export const SDIO_OpenSession = {
@@ -18,7 +18,7 @@ export const SDIO_OpenSession = {
             name: 'FunctionMode',
             description: 'Function mode',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'REMOTE', description: 'Remote Control Mode' },
@@ -28,13 +28,13 @@ export const SDIO_OpenSession = {
                             name: 'REMOTE_AND_CONTENT_TRANSFER',
                             description: 'Remote Control with Transfer Mode',
                         },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_Connect = {
@@ -47,23 +47,42 @@ export const SDIO_Connect = {
         {
             name: 'phaseType',
             description: 'Connection phase (1, 2, or 3)',
-            codec: baseCodecs.uint32,
+            codec: registry =>
+                createEnumCodec(
+                    registry,
+                    [
+                        { value: 0x01, name: 'PHASE_1', description: 'Authentication Phase 1' },
+                        { value: 0x02, name: 'PHASE_2', description: 'Authentication Phase 2' },
+                        { value: 0x03, name: 'PHASE_3', description: 'Authentication Phase 3' },
+                    ] as const,
+                    registry.codecs.uint32
+                ),
             required: true,
         },
         {
             name: 'keyCode1',
             description: 'KeyCode1 (always 0x00000000)',
-            codec: baseCodecs.uint32,
+            codec: registry =>
+                createEnumCodec(
+                    registry,
+                    [{ value: 0x00000000, name: 'DEFAULT', description: 'Default key code' }] as const,
+                    registry.codecs.uint32
+                ),
             required: true,
         },
         {
             name: 'keyCode2',
             description: 'KeyCode2 (always 0x00000000)',
-            codec: baseCodecs.uint32,
+            codec: registry =>
+                createEnumCodec(
+                    registry,
+                    [{ value: 0x00000000, name: 'DEFAULT', description: 'Default key code' }] as const,
+                    registry.codecs.uint32
+                ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_GetExtDeviceInfo = {
@@ -74,26 +93,31 @@ export const SDIO_GetExtDeviceInfo = {
     operationParameters: [
         {
             name: 'initiatorVersion',
-            description: 'Initiator Version',
-            codec: baseCodecs.uint32,
+            description: 'Initiator Protocol Version',
+            codec: registry =>
+                createEnumCodec(
+                    registry,
+                    [{ value: 0x012c, name: '3.00', description: 'Protocol Version 3.00' }] as const,
+                    registry.codecs.uint32
+                ),
             required: true,
         },
         {
             name: 'flagOfDevicePropertyOption',
             description: 'Enables extended SDIO Device Property / SDIControlCode',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'DISABLE', description: 'DISABLE' },
                         { value: 0x00000001, name: 'ENABLE', description: 'ENABLE' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_GetExtDevicePropValue = {
@@ -109,8 +133,8 @@ export const SDIO_GetExtDevicePropValue = {
             codec: baseCodecs.uint32,
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_SetExtDevicePropValue = {
@@ -129,18 +153,18 @@ export const SDIO_SetExtDevicePropValue = {
             name: 'flagOfDevicePropertyOption',
             description: 'Enables extended SDIO Device Property / SDIControlCode',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'DISABLE', description: 'DISABLE' },
                         { value: 0x00000001, name: 'ENABLE', description: 'ENABLE' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_ControlDevice = {
@@ -159,18 +183,18 @@ export const SDIO_ControlDevice = {
             name: 'flagOfDevicePropertyOption',
             description: 'Enables extended SDIO Device Property / SDIControlCode',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'DISABLE', description: 'DISABLE' },
                         { value: 0x00000001, name: 'ENABLE', description: 'ENABLE' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_GetAllExtDevicePropInfo = {
@@ -190,18 +214,18 @@ export const SDIO_GetAllExtDevicePropInfo = {
             name: 'flagOfDevicePropertyOption',
             description: 'Enables extended SDIO Device Property / SDIControlCode',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'DISABLE', description: 'DISABLE' },
                         { value: 0x00000001, name: 'ENABLE', description: 'ENABLE' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_GetOsdImage = {
@@ -209,8 +233,8 @@ export const SDIO_GetOsdImage = {
     name: 'SDIO_GetOsdImage',
     description: 'Get OSD image',
     dataDirection: 'out',
-    operationParameters: [],
-    responseParameters: [],
+    operationParameters: [] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_GetPartialLargeObject = {
@@ -244,7 +268,7 @@ export const SDIO_GetPartialLargeObject = {
             codec: baseCodecs.uint32,
             required: true,
         },
-    ],
+    ] as const,
     responseParameters: [
         {
             name: 'ActualBytesSent',
@@ -252,7 +276,7 @@ export const SDIO_GetPartialLargeObject = {
             codec: baseCodecs.uint32,
             required: true,
         },
-    ],
+    ] as const,
 } as const satisfies OperationDefinition
 
 export const SDIO_SetContentsTransferMode = {
@@ -265,13 +289,13 @@ export const SDIO_SetContentsTransferMode = {
             name: 'ContentsSelectType',
             description: 'The Initiator should send this command with one of the following values:',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'INVALID', description: 'INVALID' },
                         { value: 0x00000001, name: 'CAMERA', description: 'Select on the Camera' },
                         { value: 0x00000002, name: 'HOST', description: 'Select on the Remote/Host Device' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
@@ -280,12 +304,12 @@ export const SDIO_SetContentsTransferMode = {
             name: 'TransferMode',
             description: 'The Initiator should send this command with one of the following values:',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'DISABLE', description: 'DISABLE' },
                         { value: 0x00000001, name: 'ENABLE', description: 'ENABLE' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
@@ -294,18 +318,18 @@ export const SDIO_SetContentsTransferMode = {
             name: 'AdditionalInformation',
             description: 'The Initiator should send this command with one of the following values:',
             codec: registry =>
-                new EnumCodec(
+                createEnumCodec(
                     registry,
                     [
                         { value: 0x00000000, name: 'NONE', description: 'NONE' },
                         { value: 0x00000001, name: 'CANCEL', description: 'CANCEL' },
-                    ],
+                    ] as const,
                     registry.codecs.uint32
                 ),
             required: true,
         },
-    ],
-    responseParameters: [],
+    ] as const,
+    responseParameters: [] as const,
 } as const satisfies OperationDefinition
 
 export const sonyOperationRegistry = {

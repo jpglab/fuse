@@ -103,10 +103,10 @@ describe('SonyCamera', () => {
         const result = await camera.captureLiveView()
 
         expect(result).toBeDefined()
-        expect(result?.data).toBeInstanceOf(Uint8Array)
+        expect(result).toBeInstanceOf(Uint8Array)
 
         const liveViewPath = path.join(outputDir, `liveview_${Date.now()}.jpg`)
-        fs.writeFileSync(liveViewPath, result!.data)
+        fs.writeFileSync(liveViewPath, result)
         console.log(`💾 LIVE VIEW SAVED TO: ${liveViewPath}`)
     }, 2000)
 

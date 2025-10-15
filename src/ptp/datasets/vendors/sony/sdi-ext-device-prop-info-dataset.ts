@@ -115,8 +115,7 @@ export class SDIExtDevicePropInfoCodec extends CustomCodec<SonyDevicePropDesc> {
             try {
                 const decodedResult = codecInstance.decode(currentValueBytes, 0)
                 currentValueDecoded = decodedResult.value
-            } catch (e) {
-            }
+            } catch (e) {}
 
             if (enumValuesSet.length > 0) {
                 enumValuesSetDecoded = enumValuesSet.map(rawVal => {

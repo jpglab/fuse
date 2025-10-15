@@ -59,11 +59,11 @@ export class Camera {
     }
 
     on(eventName: string, handler: (event: EventData) => void): void {
-        return this.instance.on(eventName, handler)
+        return this.instance.on(eventName as any, handler)
     }
 
     off(eventName: string, handler?: (event: EventData) => void): void {
-        return this.instance.off(eventName, handler)
+        return this.instance.off(eventName as any, handler)
     }
 
     async getAperture(): Promise<string> {

@@ -26,11 +26,3 @@ export interface OperationDefinition<T = number | bigint | string | object | Uin
 }
 
 export type OperationCode = number
-
-export function isStandardOperationCode(code: number): boolean {
-    return (code & 0xf000) === 0x1000
-}
-
-export function isVendorOperationCode(code: number): boolean {
-    return (code & 0x8000) === 0x8000 && (code & 0xf000) === 0x9000
-}

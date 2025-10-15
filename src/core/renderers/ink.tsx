@@ -1,7 +1,7 @@
 import { Box, Text } from 'ink'
 import Spinner from 'ink-spinner'
 import React from 'react'
-import { responseRegistry } from '../../ptp/definitions/response-definitions'
+import { OK, responseRegistry } from '../../ptp/definitions/response-definitions'
 import { ConsoleLog, Logger, PTPOperationLog, PTPTransferLog, USBTransferLog } from '../logger'
 import { formatBytes } from './formatters/bytes-formatter'
 import { formatJSON } from './formatters/compact-formatter'
@@ -117,8 +117,8 @@ export function InkLogger({ logger }: InkLoggerProps) {
                 const ptpLog = group.ptpLog
                 const operationName = ptpLog.requestPhase.operationName
 
-                const hasError = ptpLog.responsePhase && ptpLog.responsePhase.code !== 0x2001
-                const isSuccess = ptpLog.responsePhase && ptpLog.responsePhase.code === 0x2001
+                const hasError = ptpLog.responsePhase && ptpLog.responsePhase.code !== OK.code
+                const isSuccess = ptpLog.responsePhase && ptpLog.responsePhase.code === OK.code
                 const isRunning = !ptpLog.responsePhase
 
                 const startTime = ptpLog.requestPhase.timestamp
@@ -205,7 +205,7 @@ export function InkLogger({ logger }: InkLoggerProps) {
                         </Text>
                         {Object.keys(ptpLog.requestPhase.decodedParams).length === 0 ? (
                             <Text>
-                                <Text dimColor> │</Text> (no parameters)
+                                <Text dimColor> │</Text>{'     '}(no parameters)
                             </Text>
                         ) : (
                             Object.entries(ptpLog.requestPhase.decodedParams).map(([key, value]) => {
@@ -213,7 +213,7 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                     typeof value === 'number' ? `0x${value.toString(16)}` : safeStringify(value)
                                 return (
                                     <Text key={key}>
-                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                        <Text dimColor> │</Text>{'     '}
                                         {key} set to {formattedValue}
                                     </Text>
                                 )
@@ -226,8 +226,7 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                     .join(' ')
                                 return (
                                     <Text key={idx}>
-                                        <Text dimColor>{ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
-                                        Bytes encoded as [{hex}
+                                        <Text dimColor> │</Text>{'     '}Bytes encoded as [{hex}
                                         {encoded.length > 16 ? '...' : ''}]
                                     </Text>
                                 )
@@ -239,11 +238,8 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                     const direction = usbLog.direction === 'send' ? 'to' : 'from'
                                     return (
                                         <Text key={usbLog.id}>
-                                            <Text dimColor>
-                                                {ptpLog.dataPhase || ptpLog.responsePhase ? '  │' : '  '}
-                                            </Text>{' '}
-                                            Transferred {formatBytes(usbLog.bytes)} via USB {direction}{' '}
-                                            {usbLog.endpoint} {usbLog.endpointAddress}
+                                            <Text dimColor> │</Text>{'     '}Transferred {formatBytes(usbLog.bytes)} via USB{' '}
+                                            {direction} {usbLog.endpoint} {usbLog.endpointAddress}
                                         </Text>
                                     )
                                 })}
@@ -286,12 +282,12 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                         return (
                                             <>
                                                 <Text>
-                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    <Text dimColor> │</Text>{'     '}
                                                     <Text color="blue">{bar}</Text>
                                                     <Text> {percent.toFixed(1)}%</Text>
                                                 </Text>
                                                 <Text>
-                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
+                                                    <Text dimColor> │</Text>{'     '}
                                                     <Text>
                                                         {speedText} ({formatBytes(totalBytes)} total,{' '}
                                                         {transferChunks.length} chunks @ {formatBytes(avgChunkSize, 0)}{' '}
@@ -305,18 +301,18 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                     ptpLog.dataPhase.decodedData !== undefined &&
                                     ptpLog.dataPhase.decodedData !== null &&
                                     (() => {
-                                        const prefix = ptpLog.responsePhase ? '  │' : '  '
                                         const formattedLines = formatJSON(ptpLog.dataPhase.decodedData, 0)
 
                                         return formattedLines.map((line, idx) => (
                                             <Text key={idx}>
-                                                <Text dimColor>{prefix}</Text> {line}
+                                                <Text dimColor> │</Text>{'     '}
+                                                {line}
                                             </Text>
                                         ))
                                     })()}
                                 {config.showEncodedData && ptpLog.dataPhase.encodedData && (
                                     <Text>
-                                        <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text> Bytes encoded as [
+                                        <Text dimColor> │</Text>{'     '}Bytes encoded as [
                                         {Array.from(ptpLog.dataPhase.encodedData.slice(0, 16))
                                             .map(b => b.toString(16).padStart(2, '0'))
                                             .join(' ')}
@@ -335,9 +331,8 @@ export function InkLogger({ logger }: InkLoggerProps) {
 
                                             return (
                                                 <Text key="aggregate-usb">
-                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
-                                                    Transferred {formatBytes(totalBytes)} via USB {direction} {endpoint}{' '}
-                                                    {endpointAddress}
+                                                    <Text dimColor> │</Text>{'     '}Transferred {formatBytes(totalBytes)} via USB{' '}
+                                                    {direction} {endpoint} {endpointAddress}
                                                 </Text>
                                             )
                                         }
@@ -346,9 +341,8 @@ export function InkLogger({ logger }: InkLoggerProps) {
                                             const direction = usbLog.direction === 'send' ? 'to' : 'from'
                                             return (
                                                 <Text key={usbLog.id}>
-                                                    <Text dimColor>{ptpLog.responsePhase ? '  │' : '  '}</Text>{' '}
-                                                    Transferred {formatBytes(usbLog.bytes)} via USB {direction}{' '}
-                                                    {usbLog.endpoint} {usbLog.endpointAddress}
+                                                    <Text dimColor> │</Text>{'     '}Transferred {formatBytes(usbLog.bytes)} via USB{' '}
+                                                    {direction} {usbLog.endpoint} {usbLog.endpointAddress}
                                                 </Text>
                                             )
                                         })

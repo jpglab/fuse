@@ -15,14 +15,6 @@ export interface EventDefinition {
 
 export type EventCode = number
 
-export function isStandardEventCode(code: number): boolean {
-    return (code & 0xf000) === 0x4000
-}
-
-export function isVendorEventCode(code: number): boolean {
-    return (code & 0x8000) === 0x8000 && (code & 0xf000) === 0xc000
-}
-
 /**
  * Cross-platform EventEmitter implementation
  * Works in both Node.js and browser environments

@@ -31,11 +31,11 @@ async function main() {
     const fNumber = await camera.get(Props.FNumber)
 
     // Register event handlers to see what events come through
-    camera.on('ObjectAdded', event => {
+    camera.on(camera.registry.events.ObjectAdded, event => {
         console.log('📸 ObjectAdded event:', event)
     })
 
-    camera.on('CaptureComplete', event => {
+    camera.on(camera.registry.events.CaptureComplete, event => {
         console.log('✅ CaptureComplete event:', event)
     })
 

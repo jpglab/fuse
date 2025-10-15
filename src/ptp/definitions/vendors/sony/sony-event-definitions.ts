@@ -203,13 +203,6 @@ export const SDIE_OperationResultsOld = {
     parameters: [],
 } as const satisfies EventDefinition
 
-export const SDIE_AFStatusOld = {
-    code: 0xc221,
-    name: 'SDIE_AFStatusOld',
-    description: 'Notify the AF status (older version)',
-    parameters: [],
-} as const satisfies EventDefinition
-
 export const SDIE_OperationResults = {
     code: 0xc222,
     name: 'SDIE_OperationResults',
@@ -225,7 +218,7 @@ export const SDIE_AFStatus = {
     code: 0xc223,
     name: 'SDIE_AFStatus',
     description: 'Notify the AF status',
-    parameters: [{ name: 'Status', description: 'Autofocus status', type: 'UINT32' }],
+    parameters: [{ name: 'Status', description: 'Autofocus status (same as Focus Indication 0xD213)', type: 'UINT32' }],
 } as const satisfies EventDefinition
 
 export const SDIE_MovieRecOperationResults = {
@@ -358,7 +351,6 @@ export const sonyEventRegistry = {
     SDIE_FirmwareUpdateEvent,
     SDIE_StreamStatusEvent,
     SDIE_OperationResultsOld,
-    SDIE_AFStatusOld,
     SDIE_OperationResults,
     SDIE_AFStatus,
     SDIE_MovieRecOperationResults,

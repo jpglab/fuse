@@ -257,8 +257,7 @@ export class NikonLiveViewDatasetCodec extends CustomCodec<NikonLiveViewDataset>
         currentOffset += 118
 
         // Live view image starts at offset 1024
-        // NOTE: JPEG image data - JPEG format is inherently big-endian (markers like SOI are
-        // 0xFF 0xD8 not 0xD8 0xFF), but we don't interpret the bytes, just pass them through.
+        // NOTE: JPEG image data - JPEG format is inherently big-endian
         // No endianness conversion needed.
         let liveViewImage: Uint8Array | null = null
         const imageStartOffset = offset + 1024
