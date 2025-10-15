@@ -82,7 +82,7 @@ export interface NikonLiveViewDataset {
     reservedEnd: Uint8Array // 118 bytes at offset 906
 
     // Live view image (JPEG)
-    liveViewImage: Uint8Array | null
+    liveViewImage: Uint8Array
 }
 
 export class NikonLiveViewDatasetCodec extends CustomCodec<NikonLiveViewDataset> {
@@ -259,7 +259,7 @@ export class NikonLiveViewDatasetCodec extends CustomCodec<NikonLiveViewDataset>
         // Live view image starts at offset 1024
         // NOTE: JPEG image data - JPEG format is inherently big-endian
         // No endianness conversion needed.
-        let liveViewImage: Uint8Array | null = null
+        let liveViewImage: Uint8Array = new Uint8Array()
         const imageStartOffset = offset + 1024
         const expectedEndOffset = imageStartOffset + liveViewImageSize
 

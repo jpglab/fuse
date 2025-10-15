@@ -90,12 +90,12 @@ export class Camera {
         return this.instance.setIso(value)
     }
 
-    async captureImage(): Promise<{ info: any; data: Uint8Array } | null> {
-        return this.instance.captureImage()
+    async captureImage(params?: { includeInfo?: boolean; includeData?: boolean }) {
+        return this.instance.captureImage({ includeInfo: true, includeData: true, ...params })
     }
 
-    async captureLiveView(): Promise<Uint8Array> {
-        return this.instance.captureLiveView()
+    async captureLiveView(params?: { includeInfo?: boolean; includeData?: boolean }) {
+        return this.instance.captureLiveView({ includeInfo: true, includeData: true, ...params })
     }
 
     async startRecording(): Promise<void> {

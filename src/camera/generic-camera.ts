@@ -20,6 +20,10 @@ export class GenericCamera {
     protected logger: Logger
     public registry: Registry
 
+    protected liveViewBufferSize = 5 * 1024 * 1024 // 5MB
+    protected captureBufferSize = 100 * 1024 * 1024 // 100MB
+    protected bufferPadding = 1024 * 1024 // 1MB
+
     constructor(transport: TransportInterface, logger: Logger) {
         this.transport = transport
         this.logger = logger
@@ -278,7 +282,11 @@ export class GenericCamera {
         const responseContainer = this.parseContainer(responseRaw)
 
         // If data phase had empty payload but response has payload, use response payload as data
-        if (operation.dataDirection === 'out' && (!receivedData || receivedData.length === 0) && responseContainer.payload.length > 0) {
+        if (
+            operation.dataDirection === 'out' &&
+            (!receivedData || receivedData.length === 0) &&
+            responseContainer.payload.length > 0
+        ) {
             receivedData = responseContainer.payload
 
             // Decode the response payload if we have a dataCodec
@@ -389,12 +397,41 @@ export class GenericCamera {
         return this.set(this.registry.properties.ExposureIndex, value)
     }
 
-    async captureImage(): Promise<{ info: ObjectInfo; data: Uint8Array } | null> {
+    async captureImage({ includeInfo = true, includeData = true }): Promise<{ info?: ObjectInfo; data?: Uint8Array }> {
         await this.send(this.registry.operations.InitiateCapture, {})
-        throw new Error('Image retrieval after capture not implemented in generic camera')
+        const capturedImageObjectHandle = await this.waitForCapturedImageObjectHandle()
+
+        let info: ObjectInfo | undefined = undefined
+        let data: Uint8Array | undefined = undefined
+
+        if (includeInfo) {
+            const objectInfoResponse = await this.send(this.registry.operations.GetObjectInfo, {
+                ObjectHandle: capturedImageObjectHandle,
+            })
+            info = objectInfoResponse.data
+        }
+        if (includeData) {
+            const objectResponse = await this.send(
+                this.registry.operations.GetObject,
+                {
+                    ObjectHandle: capturedImageObjectHandle,
+                },
+                undefined,
+                (info?.objectCompressedSize || this.liveViewBufferSize) + this.bufferPadding
+            )
+            data = objectResponse.data
+        }
+
+        return {
+            info: info,
+            data: data,
+        }
     }
 
-    async captureLiveView(): Promise<Uint8Array> {
+    async captureLiveView({
+        includeInfo = true,
+        includeData = true,
+    }): Promise<{ info?: ObjectInfo; data?: Uint8Array }> {
         throw new Error('Live view capture not supported on generic PTP cameras')
     }
 
@@ -412,6 +449,10 @@ export class GenericCamera {
         }
 
         return codec
+    }
+
+    protected async waitMs(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms))
     }
 
     protected handleEvent(event: PTPEvent): void {
@@ -453,6 +494,21 @@ export class GenericCamera {
         })
 
         this.emitter.emit<Record<string, number | bigint | string>>(eventDef.name, decodedParams)
+    }
+
+    protected async waitForCapturedImageObjectHandle(): Promise<number> {
+        let capturedImageObjectHandle: number | null = null
+        this.on(this.registry.events.ObjectAdded, event => {
+            if (event.ObjectHandle) {
+                capturedImageObjectHandle = event.ObjectHandle
+            }
+        })
+        while (!capturedImageObjectHandle) {
+            await this.waitMs(10)
+        }
+        this.off(this.registry.events.CaptureComplete)
+
+        return capturedImageObjectHandle
     }
 
     private getNextTransactionId(): number {

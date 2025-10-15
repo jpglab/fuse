@@ -1,5 +1,6 @@
 import { Logger } from '@core/logger'
-import { DeviceBusy, OK } from '@ptp/definitions/response-definitions'
+import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
+import { OK } from '@ptp/definitions/response-definitions'
 import { VendorIDs } from '@ptp/definitions/vendor-ids'
 import { ISOAutoControl } from '@ptp/definitions/vendors/nikon/nikon-operation-definitions'
 import { createNikonRegistry, type NikonRegistry } from '@ptp/registry'
@@ -83,43 +84,52 @@ export class NikonCamera extends GenericCamera {
         }
     }
 
-    async captureLiveView(): Promise<Uint8Array> {
-        if (!this.liveViewEnabled) {
-            await this.startLiveView()
+    async captureLiveView({
+        includeInfo = true,
+        includeData = true,
+    }): Promise<{ info?: ObjectInfo; data?: Uint8Array }> {
+        await this.startLiveView()
+
+        let info: ObjectInfo | undefined = undefined
+        let data: Uint8Array | undefined = undefined
+
+        if (includeInfo) {
+            // Nikon does not support this for live view images
+        }
+        if (includeData) {
+            const response = await this.send(
+                this.registry.operations.GetLiveViewImageEx,
+                {},
+                undefined,
+                this.liveViewBufferSize + this.bufferPadding
+            )
+            data = response.data.liveViewImage
         }
 
-        const response = await this.send(this.registry.operations.GetLiveViewImageEx, {})
-        const liveViewData = response.data
-
-        return liveViewData.liveViewImage || new Uint8Array()
+        return { info: info, data: data }
     }
 
     async startLiveView(): Promise<void> {
-        await this.send(this.registry.operations.StartLiveView, {})
-
-        let retries = 0
-        while (retries < 50) {
-            const readyResponse = await this.send(this.registry.operations.DeviceReady, {})
-
-            if (readyResponse.code === OK.code) {
-                this.liveViewEnabled = true
-                return
-            }
-
-            if (readyResponse.code === DeviceBusy.code) {
-                await new Promise(resolve => setTimeout(resolve, 10))
-                retries++
-                continue
-            }
-
-            throw new Error(`Failed to start live view: DeviceReady returned code 0x${readyResponse.code.toString(16)}`)
+        if (!this.liveViewEnabled) {
+            await this.send(this.registry.operations.StartLiveView, {})
+            await this.waitForLiveViewReady()
+            this.liveViewEnabled = true
         }
-
-        throw new Error('Timeout waiting for live view to start')
     }
 
     async stopLiveView(): Promise<void> {
         await this.send(this.registry.operations.EndLiveView, {})
         this.liveViewEnabled = false
+    }
+
+    private async waitForLiveViewReady(): Promise<void> {
+        let isReady = false
+        while (!isReady) {
+            const response = await this.send(this.registry.operations.DeviceReady, {})
+            if (response.code === OK.code) {
+                isReady = true
+            }
+            await this.waitMs(10)
+        }
     }
 }

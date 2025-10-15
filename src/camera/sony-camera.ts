@@ -1,6 +1,5 @@
 import { Logger } from '@core/logger'
 import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
-import { parseLiveViewDataset } from '@ptp/datasets/vendors/sony/sony-live-view-dataset'
 import { SessionAlreadyOpen } from '@ptp/definitions/response-definitions'
 import { randomSessionId } from '@ptp/definitions/session'
 import { VendorIDs } from '@ptp/definitions/vendor-ids'
@@ -13,11 +12,10 @@ import { DeviceDescriptor } from '@transport/interfaces/device.interface'
 import { TransportInterface } from '@transport/interfaces/transport.interface'
 import { GenericCamera } from './generic-camera'
 
-const SONY_CAPTURED_IMAGE_OBJECT_HANDLE = 0xffffc001
 const SONY_LIVE_VIEW_OBJECT_HANDLE = 0xffffc002
 
 export class SonyCamera extends GenericCamera {
-    private liveViewEnabled = false
+    private liveViewPostViewEnabled = false
     vendorId = VendorIDs.SONY
     declare public registry: SonyRegistry
 
@@ -46,8 +44,9 @@ export class SonyCamera extends GenericCamera {
             })
         }
 
-        // Small delay required before authentication to avoid Sony firmware issues
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // probably not needed in recent testing
+        // small delay required before authentication
+        // await this.waitMs(100)
 
         await this.authenticate()
 
@@ -80,7 +79,7 @@ export class SonyCamera extends GenericCamera {
         }
 
         const isControlProperty =
-            /ShutterReleaseButton|ShutterHalfReleaseButton|S1S2Button|SetLiveViewEnable|MovieRecButton/i.test(
+            /ShutterReleaseButton|ShutterHalfReleaseButton|S1S2Button|SetLiveViewEnable|SetPostViewEnable|MovieRecButton/i.test(
                 property.name
             )
 
@@ -144,77 +143,63 @@ export class SonyCamera extends GenericCamera {
         return this.set(this.registry.properties.Iso, value)
     }
 
-    async captureImage(): Promise<{ info: ObjectInfo; data: Uint8Array } | null> {
+    async captureImage({ includeInfo = true, includeData = true }): Promise<{ info?: ObjectInfo; data?: Uint8Array }> {
+        await this.startLiveView()
+
         await this.set(this.registry.properties.S1S2Button, 'DOWN')
-
-        let isFocused = false
-        this.on(this.registry.events.SDIE_AFStatus, event => {
-            if (event.Status === 'AF_C_FOCUSED' || event.Status === 'AF_S_FOCUSED') {
-                isFocused = true
-            }
-        })
-        while (!isFocused) {
-            await new Promise(resolve => setTimeout(resolve, 10))
-            console.log('Waiting for focus...')
-        }
-
-        // Release the button to capture
+        await this.waitForFocus()
         await this.set(this.registry.properties.S1S2Button, 'UP')
+        const capturedImageObjectHandle = await this.waitForCapturedImageObjectHandle()
 
-        await new Promise(resolve => setTimeout(resolve, 5000))
+        let info: ObjectInfo | undefined = undefined
+        let data: Uint8Array | undefined = undefined
 
-        const objectInfoResponse = await this.send(
-            this.registry.operations.GetObjectInfo,
-            {
-                ObjectHandle: SONY_CAPTURED_IMAGE_OBJECT_HANDLE,
-            },
-            undefined,
-            10 * 1024 * 1024
-        )
-
-        if (!objectInfoResponse.data) {
-            return null
+        if (includeInfo) {
+            const objectInfoResponse = await this.send(this.registry.operations.GetObjectInfo, {
+                ObjectHandle: capturedImageObjectHandle,
+            })
+            info = objectInfoResponse.data
         }
-
-        const objectInfo = objectInfoResponse.data
-        const objectCompressedSize = objectInfo.objectCompressedSize
-
-        const objectResponse = await this.send(
-            this.registry.operations.GetObject,
-            {
-                ObjectHandle: SONY_CAPTURED_IMAGE_OBJECT_HANDLE,
-            },
-            undefined,
-            objectCompressedSize + 10 * 1024 * 1024
-        )
-
-        if (!objectResponse.data) {
-            return null
+        if (includeData) {
+            const objectResponse = await this.send(
+                this.registry.operations.GetObject,
+                {
+                    ObjectHandle: capturedImageObjectHandle,
+                },
+                undefined,
+                (info?.objectCompressedSize || this.captureBufferSize) + this.bufferPadding
+            )
+            data = objectResponse.data
         }
-
         return {
-            info: objectInfo,
-            data: objectResponse.data,
+            info: info,
+            data: data,
         }
     }
 
-    async captureLiveView(): Promise<Uint8Array> {
-        if (!this.liveViewEnabled) {
-            await this.set(this.registry.properties.SetLiveViewEnable, 'ENABLE')
-            this.liveViewEnabled = true
+    async captureLiveView({
+        includeInfo = true,
+        includeData = true,
+    }): Promise<{ info?: ObjectInfo; data?: Uint8Array }> {
+        await this.startLiveView()
+
+        let info: ObjectInfo | undefined = undefined
+        let data: Uint8Array | undefined = undefined
+
+        if (includeInfo) {
+            const objectInfoResponse = await this.send(this.registry.operations.GetObjectInfo, {
+                ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
+            })
+            info = objectInfoResponse.data
+        }
+        if (includeData) {
+            const objectResponse = await this.send(this.registry.operations.GetObject, {
+                ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
+            })
+            data = objectResponse.data
         }
 
-        const objectResponse = await this.send(this.registry.operations.GetObject, {
-            ObjectHandle: SONY_LIVE_VIEW_OBJECT_HANDLE,
-        })
-
-        if (!objectResponse.data) {
-            return new Uint8Array()
-        }
-
-        const liveViewData = parseLiveViewDataset(objectResponse.data, this.registry)
-
-        return liveViewData.liveViewImage || new Uint8Array()
+        return { info: info, data: data }
     }
 
     async startRecording(): Promise<void> {
@@ -223,6 +208,45 @@ export class SonyCamera extends GenericCamera {
 
     async stopRecording(): Promise<void> {
         await this.set(this.registry.properties.MovieRecButton, 'UP')
+    }
+
+    protected async waitForCapturedImageObjectHandle(): Promise<number> {
+        let capturedImageObjectHandle: number | null = null
+        this.on(this.registry.events.SDIE_ObjectAdded, event => {
+            if (event.ObjectHandle) {
+                capturedImageObjectHandle = event.ObjectHandle
+            }
+        })
+        while (!capturedImageObjectHandle) {
+            await this.waitMs(10)
+        }
+        this.off(this.registry.events.CaptureComplete)
+
+        return capturedImageObjectHandle
+    }
+
+    private async waitForFocus(): Promise<void> {
+        let isFocused = false
+        this.on(this.registry.events.SDIE_AFStatus, event => {
+            if (event.Status === 'AF_C_FOCUSED' || event.Status === 'AF_S_FOCUSED') {
+                isFocused = true
+            }
+        })
+        while (!isFocused) {
+            await this.waitMs(10)
+        }
+        this.off(this.registry.events.SDIE_AFStatus)
+    }
+
+    private async startLiveView(): Promise<void> {
+        // NOTE from Sony documentation:
+        // When using Get Image File and Live View while connected in “Remote Control with Transfer Mode,”
+        // it is necessary to enable the features using Set PostView Enable and Set LiveView Enable, respectively.
+        if (!this.liveViewPostViewEnabled) {
+            await this.set(this.registry.properties.SetLiveViewEnable, 'ENABLE')
+            await this.set(this.registry.properties.SetPostViewEnable, 'ENABLE')
+            this.liveViewPostViewEnabled = true
+        }
     }
 
     private async authenticate(): Promise<void> {

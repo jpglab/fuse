@@ -990,6 +990,33 @@ export const SetLiveViewEnable = {
         ),
 } as const satisfies PropertyDefinition
 
+export const SetPostViewEnable = {
+    code: 0xd312,
+    name: 'SetPostViewEnable',
+    description:
+        'Set post view enable. When using Live View while connected in "Remote Control with Transfer Mode," it is necessary to enable the feature using this Control Code.',
+    datatype: UINT16,
+    access: 'GetSet',
+    codec: registry =>
+        new EnumCodec(
+            registry,
+            [
+                { value: 0x0001, name: 'DISABLE', description: 'DISABLE' },
+                { value: 0x0002, name: 'ENABLE', description: 'ENABLE' },
+            ],
+            registry.codecs.uint16
+        ),
+} as const satisfies PropertyDefinition
+
+export const ShootingFileInfo = {
+    code: 0xd215,
+    name: 'ShootingFileInfo',
+    description: 'Get the shooting file info. 0x0000 indicates no files are available, 0x0001 - 0x7FFF indicate files exist. 0x8001 and over indicate the files are ready for transfer.',
+    datatype: UINT16,
+    access: 'Get',
+    codec: baseCodecs.uint16,
+} as const satisfies PropertyDefinition
+
 export const ShutterHalfReleaseButton = {
     code: 0xd2c1,
     name: 'ShutterHalfReleaseButton',
@@ -1131,6 +1158,7 @@ export const sonyPropertyRegistry = {
     StillImageSaveDestination,
     PositionKeySetting,
     SetLiveViewEnable,
+    SetPostViewEnable,
     ShutterHalfReleaseButton,
     ShutterReleaseButton,
     S1S2Button,
