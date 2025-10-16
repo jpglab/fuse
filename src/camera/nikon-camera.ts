@@ -122,6 +122,53 @@ export class NikonCamera extends GenericCamera {
         this.liveViewEnabled = false
     }
 
+    async getObject(objectHandle: number, objectSize: number): Promise<Uint8Array> {
+        const chunks: Uint8Array[] = []
+        let offset = 0
+
+        while (offset < objectSize) {
+            const bytesToRead = Math.min(this.defaultChunkSize, objectSize - offset)
+
+            // Split offset and size into lower/upper 32-bit values
+            const offsetLower = offset & 0xffffffff
+            const offsetUpper = Math.floor(offset / 0x100000000)
+            const maxSizeLower = bytesToRead & 0xffffffff
+            const maxSizeUpper = Math.floor(bytesToRead / 0x100000000)
+
+            const chunkResponse = await this.send(
+                this.registry.operations.GetPartialObjectEx,
+                {
+                    ObjectHandle: objectHandle,
+                    OffsetLower: offsetLower,
+                    OffsetUpper: offsetUpper,
+                    MaxSizeLower: maxSizeLower,
+                    MaxSizeUpper: maxSizeUpper,
+                },
+                undefined,
+                // Add 12 bytes for PTP container header (length + type + code + transactionId)
+                offset === 0 ? objectSize + 12 : bytesToRead + 12
+            )
+
+            if (!chunkResponse.data) {
+                throw new Error('No data received from GetPartialObjectEx')
+            }
+
+            chunks.push(chunkResponse.data)
+            offset += chunkResponse.data.length
+        }
+
+        // Combine all chunks
+        const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const completeFile = new Uint8Array(totalBytes)
+        let writeOffset = 0
+        for (const chunk of chunks) {
+            completeFile.set(chunk, writeOffset)
+            writeOffset += chunk.length
+        }
+
+        return completeFile
+    }
+
     private async waitForLiveViewReady(): Promise<void> {
         let isReady = false
         while (!isReady) {

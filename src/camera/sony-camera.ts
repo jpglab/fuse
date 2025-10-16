@@ -55,6 +55,11 @@ export class SonyCamera extends GenericCamera {
         await this.set(this.registry.properties.StillImageSaveDestination, 'CAMERA_DEVICE')
     }
 
+    async disconnect(): Promise<void> {
+        await this.disableContentTransferMode()
+        await super.disconnect()
+    }
+
     async get<P extends PropertyDefinition>(property: P): Promise<CodecType<P['codec']>> {
         if (!property.access.includes('Get')) {
             throw new Error(`Property ${property.name} is not readable`)
@@ -224,6 +229,54 @@ export class SonyCamera extends GenericCamera {
         return objects
     }
 
+    async getObject(objectHandle: number, objectSize: number): Promise<Uint8Array> {
+        await this.enableContentTransferMode()
+
+        const chunks: Uint8Array[] = []
+        let offset = 0
+
+        while (offset < objectSize) {
+            const bytesToRead = Math.min(this.defaultChunkSize, objectSize - offset)
+
+            // Split 64-bit offset into two 32-bit values
+            const offsetLower = offset & 0xffffffff
+            const offsetUpper = Math.floor(offset / 0x100000000)
+
+            const chunkResponse = await this.send(
+                this.registry.operations.SDIO_GetPartialLargeObject,
+                {
+                    ObjectHandle: objectHandle,
+                    OffsetLower: offsetLower,
+                    OffsetUpper: offsetUpper,
+                    MaxBytes: bytesToRead,
+                },
+                undefined,
+                // Add 12 bytes for PTP container header (length + type + code + transactionId)
+                offset === 0 ? objectSize + 12 : bytesToRead + 12
+            )
+
+            if (!chunkResponse.data) {
+                throw new Error('No data received from SDIO_GetPartialLargeObject')
+            }
+
+            chunks.push(chunkResponse.data)
+            offset += chunkResponse.data.length
+        }
+
+        // Combine all chunks
+        const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const completeFile = new Uint8Array(totalBytes)
+        let writeOffset = 0
+        for (const chunk of chunks) {
+            completeFile.set(chunk, writeOffset)
+            writeOffset += chunk.length
+        }
+
+        await this.disableContentTransferMode()
+
+        return completeFile
+    }
+
     protected async waitForCapturedImageObjectHandle(): Promise<number> {
         let capturedImageObjectHandle: number | null = null
         this.on(this.registry.events.SDIE_ObjectAdded, event => {
@@ -264,25 +317,30 @@ export class SonyCamera extends GenericCamera {
     }
 
     private async enableContentTransferMode(): Promise<void> {
-        await this.startLiveView()
-        await this.send(this.registry.operations.SDIO_SetContentsTransferMode, {
-            ContentsSelectType: 'HOST',
-            TransferMode: 'ENABLE',
-            AdditionalInformation: 'NONE',
-        })
-        while ((await this.get(this.registry.properties.ContentTransferEnable)) === 'DISABLE') {
-            await this.waitMs(10)
+        let enabled = false
+        while (!enabled) {
+            await this.send(this.registry.operations.SDIO_SetContentsTransferMode, {
+                ContentsSelectType: 'HOST',
+                TransferMode: 'ENABLE',
+                AdditionalInformation: 'NONE',
+            })
+            await this.waitMs(100)
+            enabled = (await this.get(this.registry.properties.ContentTransferEnable)) === 'ENABLE'
+            console.log('ContentTransferEnabled: ', enabled)
         }
     }
 
     private async disableContentTransferMode(): Promise<void> {
-        await this.send(this.registry.operations.SDIO_SetContentsTransferMode, {
-            ContentsSelectType: 'HOST',
-            TransferMode: 'DISABLE',
-            AdditionalInformation: 'NONE',
-        })
-        while ((await this.get(this.registry.properties.ContentTransferEnable)) === 'ENABLE') {
-            await this.waitMs(10)
+        let disabled = false
+        while (!disabled) {
+            await this.send(this.registry.operations.SDIO_SetContentsTransferMode, {
+                ContentsSelectType: 'HOST',
+                TransferMode: 'DISABLE',
+                AdditionalInformation: 'NONE',
+            })
+            await this.waitMs(100)
+            disabled = (await this.get(this.registry.properties.ContentTransferEnable)) === 'DISABLE'
+            console.log('ContentTransferDisabled: ', disabled)
         }
     }
 

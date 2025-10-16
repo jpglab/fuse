@@ -116,6 +116,10 @@ export class Camera {
     }> {
         return this.instance.listObjects()
     }
+
+    async getObject(objectHandle: number, objectSize: number): Promise<Uint8Array> {
+        return this.instance.getObject(objectHandle, objectSize)
+    }
 }
 
 export { GenericCamera } from './generic-camera'

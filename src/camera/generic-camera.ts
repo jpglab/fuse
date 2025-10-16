@@ -25,6 +25,7 @@ export class GenericCamera {
     protected liveViewBufferSize = 5 * 1024 * 1024 // 5MB
     protected captureBufferSize = 100 * 1024 * 1024 // 100MB
     protected bufferPadding = 1024 * 1024 // 1MB
+    protected defaultChunkSize = 10 * 1024 * 1024 // 10MB
 
     constructor(transport: TransportInterface, logger: Logger) {
         this.transport = transport
@@ -492,6 +493,45 @@ export class GenericCamera {
         console.log(formatJSON(result))
 
         return result
+    }
+
+    async getObject(objectHandle: number, objectSize: number): Promise<Uint8Array> {
+        const chunks: Uint8Array[] = []
+        let offset = 0
+
+        while (offset < objectSize) {
+            const bytesToRead = Math.min(this.defaultChunkSize, objectSize - offset)
+
+            const chunkResponse = await this.send(
+                this.registry.operations.GetPartialObject,
+                {
+                    ObjectHandle: objectHandle,
+                    Offset: offset,
+                    MaxBytes: bytesToRead,
+                },
+                undefined,
+                // Add 12 bytes for PTP container header (length + type + code + transactionId)
+                offset === 0 ? objectSize + 12 : bytesToRead + 12
+            )
+
+            if (!chunkResponse.data) {
+                throw new Error('No data received from GetPartialObject')
+            }
+
+            chunks.push(chunkResponse.data)
+            offset += chunkResponse.data.length
+        }
+
+        // Combine all chunks
+        const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const completeFile = new Uint8Array(totalBytes)
+        let writeOffset = 0
+        for (const chunk of chunks) {
+            completeFile.set(chunk, writeOffset)
+            writeOffset += chunk.length
+        }
+
+        return completeFile
     }
 
     public resolveCodec<T>(codec: CodecDefinition<T> | CodecDefinition<any>): CodecInstance<T> {
