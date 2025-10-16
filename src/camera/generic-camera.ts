@@ -1,5 +1,5 @@
 import { Logger, PTPTransferLog } from '@core/logger'
-import { formatJSON } from '@core/renderers/formatters/compact-formatter'
+import { formatCompact, formatJSON } from '@core/renderers/formatters/compact-formatter'
 import { ObjectInfo } from '@ptp/datasets/object-info-dataset'
 import { StorageInfo } from '@ptp/datasets/storage-info-dataset'
 import { SessionAlreadyOpen } from '@ptp/definitions/response-definitions'
@@ -92,36 +92,17 @@ export class GenericCamera {
             encodedParams.push(codec.encode(value))
         }
 
-        const isPartialObjectOp = operation.name.includes('Partial')
-        const objectHandleValue = isPartialObjectOp ? paramsRecord.ObjectHandle : null
+        // Check if this is part of an active transfer (managed externally via logger.startTransfer)
+        const objectHandleValue = paramsRecord.ObjectHandle
         const objectHandle: number | null = typeof objectHandleValue === 'number' ? objectHandleValue : null
+        const existingTransferLogId = objectHandle !== null ? this.logger.getActiveTransfer(objectHandle) : undefined
 
         let logId: number
-        if (isPartialObjectOp && objectHandle !== null) {
-            const existingLogId = this.logger.getActiveTransfer(objectHandle)
-            if (existingLogId !== undefined) {
-                logId = existingLogId
-            } else {
-                const transferLog: Omit<PTPTransferLog, 'id' | 'timestamp'> = {
-                    type: 'ptp_transfer',
-                    level: 'info',
-                    sessionId: this.sessionId!,
-                    transactionId,
-                    objectHandle,
-                    totalBytes: 0,
-                    transferredBytes: 0,
-                    chunks: [],
-                    requestPhase: {
-                        timestamp: Date.now(),
-                        operationName: operation.name,
-                        encodedParams,
-                        decodedParams: paramsRecord,
-                    },
-                }
-                logId = this.logger.addLog(transferLog)
-                this.logger.registerTransfer(objectHandle, logId)
-            }
+        if (existingTransferLogId !== undefined) {
+            // This operation is part of an active transfer, don't create a new log
+            logId = existingTransferLogId
         } else {
+            // Regular operation log
             logId = this.logger.addLog({
                 type: 'ptp_operation',
                 level: 'info',
@@ -225,48 +206,10 @@ export class GenericCamera {
                 }
             }
 
-            if (isPartialObjectOp && typeof objectHandle === 'number') {
-                const offsetValue =
-                    typeof paramsRecord.Offset === 'number'
-                        ? paramsRecord.Offset
-                        : typeof paramsRecord.OffsetLower === 'number'
-                          ? paramsRecord.OffsetLower
-                          : 0
-                const offsetUpperValue = typeof paramsRecord.OffsetUpper === 'number' ? paramsRecord.OffsetUpper : 0
-                const fullOffset = offsetUpperValue * 0x100000000 + offsetValue
-                const receivedBytes = receivedData?.length || 0
-
-                const currentLog = this.logger.getLogById(logId)
-                const isTransferLog = currentLog && currentLog.type === 'ptp_transfer'
-                const chunks = isTransferLog ? [...currentLog.chunks] : []
-
-                chunks.push({
-                    transactionId,
-                    timestamp: Date.now(),
-                    offset: fullOffset,
-                    bytes: receivedBytes,
-                })
-
-                const totalTransferred = chunks.reduce((sum, c) => sum + c.bytes, 0)
-                const totalBytes =
-                    isTransferLog && currentLog.totalBytes > 0
-                        ? currentLog.totalBytes
-                        : maxDataLength || fullOffset + receivedBytes
-
-                this.logger.updateLog(logId, {
-                    chunks,
-                    totalBytes,
-                    transferredBytes: totalTransferred,
-                    dataPhase: {
-                        timestamp: Date.now(),
-                        direction: 'out',
-                        bytes: receivedData?.length || 0,
-                        encodedData: receivedData,
-                        decodedData: decodedData,
-                        maxDataLength,
-                    },
-                })
-            } else {
+            // Only update data phase for non-transfer operations
+            // Transfer operations are updated externally via logger.updateTransferProgress
+            const currentLog = this.logger.getLogById(logId)
+            if (!currentLog || currentLog.type !== 'ptp_transfer') {
                 this.logger.updateLog(logId, {
                     dataPhase: {
                         timestamp: Date.now(),
@@ -280,9 +223,13 @@ export class GenericCamera {
             }
         }
 
-        const responseBufferSize = operation.dataDirection === 'out' ? maxDataLength || 256 * 1024 : 512
+        const responseBufferSize = 512
         const responseRaw = await this.transport.receive(responseBufferSize, this.sessionId!, transactionId)
         const responseContainer = this.parseContainer(responseRaw)
+
+        // Don't update response phase for transfer operations - they're updated externally
+        const currentLog = this.logger.getLogById(logId)
+        const isTransferLog = currentLog && currentLog.type === 'ptp_transfer'
 
         // If data phase had empty payload but response has payload, use response payload as data
         if (
@@ -313,12 +260,15 @@ export class GenericCamera {
             })
         }
 
-        this.logger.updateLog(logId, {
-            responsePhase: {
-                timestamp: Date.now(),
-                code: responseContainer.code,
-            },
-        })
+        // Only update response phase for non-transfer operations
+        if (!isTransferLog) {
+            this.logger.updateLog(logId, {
+                responsePhase: {
+                    timestamp: Date.now(),
+                    code: responseContainer.code,
+                },
+            })
+        }
 
         const isPropertyOp = operation.name.includes('GetDevicePropValue')
         const finalData = this.logger.getLogs().find(l => l.id === logId)
@@ -490,12 +440,15 @@ export class GenericCamera {
                 objects: storageObjects,
             }
         }
-        console.log(formatJSON(result))
+        console.log(formatCompact(result))
 
         return result
     }
 
     async getObject(objectHandle: number, objectSize: number): Promise<Uint8Array> {
+        // Start transfer tracking
+        this.logger.startTransfer(objectHandle, this.sessionId, 0, 'GetPartialObject', objectSize)
+
         const chunks: Uint8Array[] = []
         let offset = 0
 
@@ -510,17 +463,22 @@ export class GenericCamera {
                     MaxBytes: bytesToRead,
                 },
                 undefined,
-                // Add 12 bytes for PTP container header (length + type + code + transactionId)
-                offset === 0 ? objectSize + 12 : bytesToRead + 12
+                bytesToRead + 12
             )
 
             if (!chunkResponse.data) {
                 throw new Error('No data received from GetPartialObject')
             }
 
+            // Update transfer progress
+            this.logger.updateTransferProgress(objectHandle, chunkResponse.data.length, this.getCurrentTransactionId())
+
             chunks.push(chunkResponse.data)
             offset += chunkResponse.data.length
         }
+
+        // Complete transfer tracking
+        this.logger.completeTransfer(objectHandle)
 
         // Combine all chunks
         const totalBytes = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
@@ -600,6 +558,10 @@ export class GenericCamera {
         this.off(this.registry.events.CaptureComplete)
 
         return capturedImageObjectHandle
+    }
+
+    protected getCurrentTransactionId(): number {
+        return this.transactionId
     }
 
     private getNextTransactionId(): number {

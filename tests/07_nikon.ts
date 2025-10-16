@@ -9,15 +9,7 @@ import { NikonCamera } from '@camera/nikon-camera'
 const capturedImagesDir = '/Users/kevinschaich/repositories/jpglab/fuse/captured_images'
 
 const logger = new Logger({
-    collapseUSB: false, // Show USB transfer details for debugging
-    collapse: false, // Show all details
-    showDecodedData: true,
-    showEncodedData: true,
-    expandOnError: true,
-    maxLogs: 1000,
-    minLevel: 'debug',
-    includeOperations: [],
-    excludeOperations: [],
+    expanded: true, // Show all details
 })
 const transport = new USBTransport(logger)
 const camera = new NikonCamera(transport, logger)

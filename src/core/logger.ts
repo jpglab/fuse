@@ -163,7 +163,7 @@ export class Logger {
                 listener()
             }
             this.notifyTimeout = null
-        }, 10)
+        }, 0)
     }
 
     private getKey(sessionId: number, transactionId: number): string {
@@ -237,6 +237,14 @@ export class Logger {
         return Array.from(this.logs.values()).flat()
     }
 
+    getOrderedTransactions(): Array<{ key: string; logs: Log[]; timestamp: number }> {
+        return this.orderedTransactions.map(({ key, timestamp }) => ({
+            key,
+            logs: this.logs.get(key) || [],
+            timestamp,
+        }))
+    }
+
     getLogById(id: number): Log | undefined {
         for (const logs of this.logs.values()) {
             const found = logs.find(l => l.id === id)
@@ -273,15 +281,77 @@ export class Logger {
     }
 
     completeTransfer(objectHandle: number): void {
+        const logId = this.activeTransfers.get(objectHandle)
+        if (logId !== undefined) {
+            // Add response phase to mark transfer as complete
+            this.updateLog(logId, {
+                responsePhase: {
+                    timestamp: Date.now(),
+                    code: 0x2001, // OK
+                },
+            })
+        }
         this.activeTransfers.delete(objectHandle)
     }
 
-    private trimIfNeeded(): void {
-        if (!this.config.maxLogs || this.orderedTransactions.length <= this.config.maxLogs) return
+    startTransfer(objectHandle: number, sessionId: number, transactionId: number, operationName: string, totalBytes: number): number {
+        const transferLog: PTPTransferLog = {
+            type: 'ptp_transfer',
+            level: 'info',
+            id: this.nextId++,
+            timestamp: Date.now(),
+            sessionId,
+            transactionId,
+            objectHandle,
+            totalBytes,
+            transferredBytes: 0,
+            chunks: [],
+            requestPhase: {
+                timestamp: Date.now(),
+                operationName,
+                encodedParams: [],
+                decodedParams: { ObjectHandle: objectHandle },
+            },
+        }
+        // Use object handle in key to avoid collisions for multi-chunk transfers
+        const key = `transfer:${sessionId}:${objectHandle}`
+        this.logs.set(key, [transferLog])
+        this.orderedTransactions.push({ key, timestamp: transferLog.timestamp })
+        this.registerTransfer(objectHandle, transferLog.id)
+        this.notifyChange()
+        return transferLog.id
+    }
 
-        const toDelete = this.orderedTransactions.slice(0, this.orderedTransactions.length - this.config.maxLogs)
-        toDelete.forEach(({ key }) => this.logs.delete(key))
-        this.orderedTransactions = this.orderedTransactions.slice(-this.config.maxLogs)
+    updateTransferProgress(objectHandle: number, chunkBytes: number, chunkTransactionId: number): void {
+        const logId = this.activeTransfers.get(objectHandle)
+        if (logId === undefined) return
+
+        const log = this.getLogById(logId)
+        if (!log || log.type !== 'ptp_transfer') return
+
+        const chunks = [...log.chunks, {
+            transactionId: chunkTransactionId,
+            timestamp: Date.now(),
+            offset: log.transferredBytes,
+            bytes: chunkBytes,
+        }]
+
+        const transferredBytes = log.transferredBytes + chunkBytes
+
+        this.updateLog(logId, {
+            chunks,
+            transferredBytes,
+            dataPhase: {
+                timestamp: Date.now(),
+                direction: 'out',
+                bytes: transferredBytes,
+                maxDataLength: log.totalBytes,
+            },
+        })
+    }
+
+    private trimIfNeeded(): void {
+        // No-op for now. Can be removed or used for future trimming logic if needed.
     }
 }
 

@@ -7,8 +7,7 @@ import { USBTransport } from '@transport/usb/usb-transport'
 import { ObjectInfo } from 'src'
 
 const logger = new Logger({
-    collapseUSB: false, // Show USB transfer details for debugging
-    collapse: false, // Show all details
+    expanded: true, // Show all details
 })
 const transport = new USBTransport(logger)
 const camera = new SonyCamera(transport, logger)

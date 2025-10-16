@@ -7,7 +7,9 @@ import path from 'path'
 
 const capturedImagesDir = '/Users/kevinschaich/repositories/jpglab/fuse/captured_images'
 
-const logger = new Logger({ showDecodedData: true, showEncodedData: true, collapseUSB: false })
+const logger = new Logger({
+    expanded: true, // Show all details
+})
 const transport = new USBTransport(logger)
 
 async function downloadAllObjects(camera: Camera, objects: Awaited<ReturnType<Camera['listObjects']>>) {
@@ -38,10 +40,10 @@ async function downloadAllObjects(camera: Camera, objects: Awaited<ReturnType<Ca
 
 const sonyCamera = new Camera(VendorIDs.SONY, transport, logger)
 await sonyCamera.connect()
-const sonyLiveView = await sonyCamera.captureLiveView()
-await fs.writeFileSync(path.join(capturedImagesDir, 'sony_liveview.jpg'), sonyLiveView.data!)
-const sonyImage = await sonyCamera.captureImage()
-await fs.writeFileSync(path.join(capturedImagesDir, 'sony_image.jpg'), sonyImage.data!)
+const { info: sonyLiveViewInfo, data: sonyLiveViewData } = await sonyCamera.captureLiveView()
+await fs.writeFileSync(path.join(capturedImagesDir, 'sony_liveview.jpg'), sonyLiveViewData!)
+const { info: sonyImageInfo, data: sonyImageData } = await sonyCamera.captureImage()
+await fs.writeFileSync(path.join(capturedImagesDir, sonyImageInfo?.filename!), sonyImageData!)
 const sonyObjects = await sonyCamera.listObjects()
 await downloadAllObjects(sonyCamera, sonyObjects)
 await sonyCamera.disconnect()

@@ -10,7 +10,7 @@ export interface LiveViewDataset {
     offsetToFocalFrameInfo: number
     focalFrameInfoSize: number
     reserved: Uint8Array
-    liveViewImage: Uint8Array | null
+    liveViewImage: Uint8Array
     focalFrameInfo: FocalFrameInfo | null
 }
 
@@ -47,7 +47,7 @@ export class LiveViewDatasetCodec extends CustomCodec<LiveViewDataset> {
         const reservedSize = minOffset > 16 && minOffset !== Infinity ? minOffset - 16 : 0
         const reserved = reservedSize > 0 ? buffer.slice(offset + 16, offset + 16 + reservedSize) : new Uint8Array()
 
-        let liveViewImage: Uint8Array | null = null
+        let liveViewImage: Uint8Array = new Uint8Array()
         if (
             offsetToLiveViewImage > 0 &&
             liveViewImageSize > 0 &&
