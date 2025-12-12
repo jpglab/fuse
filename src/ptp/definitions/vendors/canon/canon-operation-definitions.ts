@@ -109,7 +109,7 @@ export const CanonSetDevicePropValue = {
 
 /**
  * This doesn't actually seem useful. Canon relies on events for all property updates/changes.
- * 
+ *
  * The only operations Canon EOS utility uses this for are:
  * - 0xd1af (Serial Number)
  * - 0xd1a6 (Battery Info)
@@ -117,7 +117,7 @@ export const CanonSetDevicePropValue = {
  * - 0xd16a (Lens Exchange History) (?)
  * - 0xd16b (Strobo Exchange History) (?)
  * - 0xd272 (?)
- * 
+ *
  * These do not match up with the devicePropertiesSupported returned by GetDeviceInfo:
  * - 0xd402 (Vanilla PTP, DeviceFriendlyName)
  * - 0xd407 (Vanilla PTP, PerceivedDeviceType)
@@ -128,7 +128,8 @@ export const CanonSetDevicePropValue = {
 export const CanonRequestDevicePropValue = {
     code: 0x9127,
     name: 'CanonRequestDevicePropValue',
-    description: 'Request Property Value (Canon-specific). This operation requests the camera to send a property value via an event, it does not return the value directly.',
+    description:
+        'Request Property Value (Canon-specific). This operation requests the camera to send a property value via an event, it does not return the value directly.',
     dataDirection: 'none',
     operationParameters: [
         {
@@ -151,6 +152,24 @@ export const CanonGetEventData = {
     dataCodec: (registry: PTPRegistry) => new CanonEventDataCodec(registry),
 } as const satisfies OperationDefinition
 
+export const CanonMovieSelectSWOn = {
+    code: 0x9133,
+    name: 'CanonMovieSelectSWOn',
+    description: 'Start movie recording.',
+    dataDirection: 'none',
+    operationParameters: [] as const,
+    responseParameters: [] as const,
+} as const satisfies OperationDefinition
+
+export const CanonMovieSelectSWOff = {
+    code: 0x9134,
+    name: 'CanonMovieSelectSWOff',
+    description: 'Stop movie recording.',
+    dataDirection: 'none',
+    operationParameters: [] as const,
+    responseParameters: [] as const,
+} as const satisfies OperationDefinition
+
 export const canonOperationRegistry = {
     CanonSetRemoteMode,
     CanonSetEventMode,
@@ -159,6 +178,8 @@ export const canonOperationRegistry = {
     CanonSetDevicePropValue,
     CanonRequestDevicePropValue,
     CanonGetEventData,
+    CanonMovieSelectSWOn,
+    CanonMovieSelectSWOff,
 } as const satisfies { [key: string]: OperationDefinition }
 
 export type CanonOperationDef = (typeof canonOperationRegistry)[keyof typeof canonOperationRegistry]

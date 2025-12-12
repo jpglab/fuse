@@ -387,6 +387,43 @@ export const CanonExposureSimMode = {
     access: 'GetSet' as const,
 } as const satisfies PropertyDefinition
 
+export const CanonLiveViewMode = {
+    code: 0xd1b0,
+    name: 'CanonLiveViewMode',
+    description: 'Set live view mode.',
+    datatype: UINT16,
+    codec: registry =>
+        createEnumCodec(
+            registry,
+            [
+                { value: 0x0, name: 'NONE', description: 'None' },
+                { value: 0x1, name: 'CAMERA', description: 'Camera' },
+                { value: 0x2, name: 'HOST', description: 'Host' },
+                { value: 0x3, name: 'CAMERA_AND_HOST', description: 'Camera and Host' },
+            ] as const,
+            registry.codecs.uint32
+        ),
+    access: 'GetSet' as const,
+} as const satisfies PropertyDefinition
+
+export const CanonRecordingDestination = {
+    code: 0xd1b8,
+    name: 'CanonRecordingDestination',
+    description: 'Movie recording destination.',
+    datatype: UINT16,
+    codec: registry =>
+        createEnumCodec(
+            registry,
+            [
+                { value: 0x0, name: 'NONE', description: 'None (not recording)' },
+                { value: 0x3, name: 'SDRAM', description: 'Camera memory' },
+                { value: 0x4, name: 'CARD', description: 'Memory card' },
+            ] as const,
+            registry.codecs.uint16
+        ),
+    access: 'GetSet' as const,
+} as const satisfies PropertyDefinition
+
 export const CanonLvViewTypeSelect = {
     code: 0xd1bc,
     name: 'CanonLvViewTypeSelect',
@@ -463,6 +500,8 @@ export const canonPropertyRegistry = {
     CanonAeModeDial,
     CanonPictureStyleExStandard,
     CanonExposureSimMode,
+    CanonLiveViewMode,
+    CanonRecordingDestination,
     CanonLvViewTypeSelect,
     CanonFlashChargingState,
     CanonAloMode,
