@@ -4,6 +4,7 @@ import { TransportType } from '@transport/interfaces/transport-types'
 import { PTPEvent, TransportInterface } from '@transport/interfaces/transport.interface'
 import { LibUSBException } from 'usb'
 import { USBContainerBuilder, USBContainerType } from './usb-container'
+import { formatDeviceTable } from './usb-device-table'
 
 export enum EndpointType {
     BULK_IN = 'bulk_in',
@@ -33,9 +34,6 @@ export interface ExtendedEventData {
     transactionId: number
     parameters: Array<{ size: number; value: Uint8Array }>
 }
-
-const USB_CLASS_STILL_IMAGE = 6
-const USB_SUBCLASS_STILL_IMAGE_CAPTURE = 1
 
 export const USB_LIMITS = { MAX_USB_TRANSFER: 1024 * 1024 * 1024, DEFAULT_BULK_SIZE: 8192 } as const
 
@@ -67,16 +65,74 @@ export class USBTransport implements TransportInterface {
         return this.usb
     }
 
+    async discover() {
+        const usb = await this.getUSB()
+        
+        // Request devices for common camera vendors with PTP/Still Image class
+        const cameraVendors = [
+            { vendorId: 0x04b0, name: 'Nikon' },      // Nikon
+            { vendorId: 0x054c, name: 'Sony' },       // Sony
+            { vendorId: 0x04a9, name: 'Canon' },      // Canon
+        ]
+        
+        for (const vendor of cameraVendors) {
+            try {
+                await usb.requestDevice({
+                    filters: [{ 
+                        vendorId: vendor.vendorId,
+                        classCode: 0x06,
+                        subclassCode: 0x01
+                    }]
+                })
+            } catch (e) {
+                // Device not found or access denied
+            }
+        }
+        
+        const devices = await usb.getDevices()
+        return devices.map(device => ({
+            device,
+            vendorId: device.vendorId,
+            productId: device.productId,
+            manufacturer: device.manufacturerName,
+            model: device.productName,
+            serialNumber: device.serialNumber,
+            classCode: device.configuration?.interfaces?.[0]?.alternates?.[0]?.interfaceClass,
+            subclassCode: device.configuration?.interfaces?.[0]?.alternates?.[0]?.interfaceSubclass,
+        }))
+    }
+
     async connect(device?: DeviceDescriptor): Promise<void> {
         if (this.connected) throw new Error('Already connected')
 
         const usb = await this.getUSB()
-        this.device = await usb.requestDevice(
-            device?.usb || {
-                filters: [{ classCode: USB_CLASS_STILL_IMAGE, subclassCode: USB_SUBCLASS_STILL_IMAGE_CAPTURE }],
-            }
+
+        const availableDevices = await this.discover()
+
+        if (availableDevices.length === 0) {
+            console.error('[USB] No USB devices found. Make sure camera is connected and in PTP/MTP mode.')
+            throw new Error('No USB devices available')
+        }
+
+        console.log(formatDeviceTable(availableDevices))
+
+        const filters = device?.usb?.filters || [{ classCode: 0x06, subclassCode: 0x01 }]
+
+        const matchingDevice = availableDevices.find(d => {
+            const filter = filters[0]
+            if (filter.vendorId !== undefined && d.vendorId !== filter.vendorId) return false
+            if (filter.productId !== undefined && d.productId !== filter.productId) return false
+            if (filter.classCode !== undefined && d.classCode !== filter.classCode) return false
+            if (filter.subclassCode !== undefined && d.subclassCode !== filter.subclassCode) return false
+            return true
+        })
+        if (!matchingDevice?.device) {
+            throw new Error('No matching device found in discovered devices')
+        }
+        this.device = matchingDevice.device as USBDevice
+        console.log(
+            `[USB] Selected device: VID:PID 0x${matchingDevice.vendorId?.toString(16).padStart(4, '0')}:0x${matchingDevice.productId?.toString(16).padStart(4, '0')} - ${matchingDevice.manufacturer || 'Unknown'} ${matchingDevice.model || 'Unknown'}`
         )
-        if (!this.device) throw new Error('No device found')
 
         await this.device.open()
 
@@ -129,10 +185,7 @@ export class USBTransport implements TransportInterface {
     private findPTPInterface(configuration: USBConfiguration): USBInterface | undefined {
         return configuration.interfaces.find(iface => {
             const alternate = iface.alternates[0] || iface.alternate
-            return (
-                alternate?.interfaceClass === USB_CLASS_STILL_IMAGE &&
-                alternate?.interfaceSubclass === USB_SUBCLASS_STILL_IMAGE_CAPTURE
-            )
+            return alternate?.interfaceClass === 0x06 && alternate?.interfaceSubclass === 0x01
         })
     }
 
