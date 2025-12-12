@@ -143,7 +143,7 @@ export class CanonCamera extends GenericCamera {
             while (retries < maxRetries) {
                 try {
                     await this.send(this.registry.operations.CanonSetDevicePropValue, {}, data)
-                    return
+                    break
                 } catch (error: any) {
                     if (error.code === 0x2019) {
                         retries++
@@ -153,6 +153,20 @@ export class CanonCamera extends GenericCamera {
                         }
                     }
                     throw error
+                }
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100))
+            
+            while (true) {
+                try {
+                    const response = await this.send(this.registry.operations.CanonGetEventData, {}, undefined, 50000)
+                    if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+                        break
+                    }
+                    this.processEvents(response.data, true)
+                } catch (error) {
+                    break
                 }
             }
         } finally {
@@ -228,6 +242,33 @@ export class CanonCamera extends GenericCamera {
         this.eventModeEnabled = false
     }
 
+    private processEvents(events: any[], emitGenericEvents = true): void {
+        events.forEach(event => {
+            if (emitGenericEvents) {
+                this.handleEvent({
+                    code: event.code,
+                    parameters: event.parameters.map(p => (typeof p === 'bigint' ? Number(p) : p)),
+                    transactionId: 0,
+                })
+            }
+            
+            if (event.code === 0xC189 && event.parameters && event.parameters.length >= 2) {
+                const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
+                const value = typeof event.parameters[1] === 'bigint' ? Number(event.parameters[1]) : event.parameters[1]
+                this.propertyCache.set(propCode, value)
+            }
+            
+            if (event.code === 0xC18A) {
+                if (event.parameters && event.parameters.length >= 1) {
+                    const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
+                    if (event.allowedValues && event.allowedValues.length > 0) {
+                        this.allowedValuesCache.set(propCode, event.allowedValues)
+                    }
+                }
+            }
+        })
+    }
+
     startEventPolling(intervalMs: number = 200): void {
         if (this.eventPollingInterval) {
             return
@@ -241,30 +282,7 @@ export class CanonCamera extends GenericCamera {
             try {
                 const response = await this.send(this.registry.operations.CanonGetEventData, {}, undefined, 50000)
                 if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                    response.data.forEach(event => {
-                        this.handleEvent({
-                            code: event.code,
-                            parameters: event.parameters.map(p => (typeof p === 'bigint' ? Number(p) : p)),
-                            transactionId: 0,
-                        })
-                        
-                        // CanonValueChanged event (0xC189 = 49545)
-                        if (event.code === 0xC189 && event.parameters && event.parameters.length >= 2) {
-                            const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
-                            const value = typeof event.parameters[1] === 'bigint' ? Number(event.parameters[1]) : event.parameters[1]
-                            this.propertyCache.set(propCode, value)
-                        }
-                        
-                        // CanonAllowedValuesChanged event (0xC18A = 49546)
-                        if (event.code === 0xC18A) {
-                            if (event.parameters && event.parameters.length >= 1) {
-                                const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
-                                if (event.allowedValues && event.allowedValues.length > 0) {
-                                    this.allowedValuesCache.set(propCode, event.allowedValues)
-                                }
-                            }
-                        }
-                    })
+                    this.processEvents(response.data, true)
                 }
             } catch (error) {}
         }, intervalMs)
@@ -278,47 +296,13 @@ export class CanonCamera extends GenericCamera {
     }
 
     private async flushInitialEvents(): Promise<void> {
-        // After enabling event mode, camera sends all current property values
-        // Cache them so properties are available immediately
-        let emptyCount = 0
-        const maxEmptyBeforeStop = 3 // Wait for 3 consecutive empty responses
-        
-        for (let i = 0; i < 20; i++) {
+        while (true) {
             try {
                 const response = await this.send(this.registry.operations.CanonGetEventData, {}, undefined, 50000)
-                if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                    console.log(`Received ${response.data.length} events during initial flush`)
-                    response.data.forEach(event => {
-                        console.log(`Event: 0x${event.code.toString(16)} with ${event.parameters?.length || 0} parameters`)
-                        
-                        // CanonValueChanged event (0xC189 = 49545)
-                        if (event.code === 0xC189 && event.parameters && event.parameters.length >= 2) {
-                            const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
-                            const value = typeof event.parameters[1] === 'bigint' ? Number(event.parameters[1]) : event.parameters[1]
-                            this.propertyCache.set(propCode, value)
-                        }
-                        
-                        // CanonAllowedValuesChanged event (0xC18A = 49546)
-                        if (event.code === 0xC18A) {
-                            if (event.parameters && event.parameters.length >= 1) {
-                                const propCode = typeof event.parameters[0] === 'bigint' ? Number(event.parameters[0]) : event.parameters[0]
-                                console.log(`  Property: 0x${propCode.toString(16)}, allowedValues: ${event.allowedValues?.length || 0}`)
-                                if (event.allowedValues && event.allowedValues.length > 0) {
-                                    this.allowedValuesCache.set(propCode, event.allowedValues)
-                                }
-                            }
-                        }
-                    })
-                    emptyCount = 0
-                } else {
-                    emptyCount++
-                    if (emptyCount >= maxEmptyBeforeStop) {
-                        break
-                    }
+                if (!response.data || !Array.isArray(response.data) || response.data.length === 0) {
+                    break
                 }
-                
-                // Small delay between polls
-                await new Promise(resolve => setTimeout(resolve, 50))
+                this.processEvents(response.data, false)
             } catch (error) {
                 break
             }
