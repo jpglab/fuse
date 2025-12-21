@@ -3,9 +3,11 @@ import { VendorIDs } from '@ptp/definitions/vendor-ids'
 import {
     ChangeApplicationMode,
     ChangeCameraMode,
+    EndMovieRecord,
     StartLiveView,
+    StartMovieRecord,
 } from '@ptp/definitions/vendors/nikon/nikon-operation-definitions'
-import { LiveViewSelector } from '@ptp/definitions/vendors/nikon/nikon-property-definitions'
+import { LiveViewSelector, MovieRecProhibitionCondition } from '@ptp/definitions/vendors/nikon/nikon-property-definitions'
 
 const nikonCamera = new Camera({ device: { usb: { filters: [{ vendorId: VendorIDs.NIKON }] } } })
 await nikonCamera.connect()
@@ -38,7 +40,7 @@ await nikonCamera.connect()
 // Option 1 (FAILED): Camera in photo mode, try entering Applicaiton mode, record
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'PC Camera Mode' })
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'PC_CAMERA' })
 // await nikonCamera.send(ChangeApplicationMode, { Mode: 'ON' })
 
 // 3:54:21.910 PM [Debug] prohibitionCondition: inPhotoMode (During photo mode)
@@ -56,7 +58,7 @@ await nikonCamera.connect()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // OK
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'Remote Mode' })
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'REMOTE' })
 
 // OK
 // screen turns off, "Connected to computer." message appears
@@ -78,7 +80,7 @@ await nikonCamera.connect()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // OK
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'Remote Mode' })
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'REMOTE' })
 
 // OK, screen off
 // await nikonCamera.send(StartLiveView, {})
@@ -99,32 +101,32 @@ await nikonCamera.connect()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // OK
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'Remote Mode' })
+await nikonCamera.send(ChangeCameraMode, { Mode: 'REMOTE' })
 
 // OK
-// await nikonCamera.set(LiveViewSelector, 'VIDEO')
+await nikonCamera.set(LiveViewSelector, 'VIDEO')
 
 // OK
-// await nikonCamera.send(StartLiveView, {})
+await nikonCamera.send(StartLiveView, {})
 
 // OK
-// await nikonCamera.send(ChangeApplicationMode, { Mode: 'ON' })
+await nikonCamera.send(ChangeApplicationMode, { Mode: 'ON' })
 
 // None, but screen still blank
-// const prohibitionCondition = await nikonCamera.get(MovieRecProhibitionCondition)
-// console.log('prohibitionCondition:', prohibitionCondition)
+const prohibitionCondition = await nikonCamera.get(MovieRecProhibitionCondition)
+console.log('prohibitionCondition:', prohibitionCondition)
 
-// await nikonCamera.send(StartMovieRecord, {})
-// await new Promise(resolve => setTimeout(resolve, 5000))
-// await nikonCamera.send(EndMovieRecord, {})
+await nikonCamera.send(StartMovieRecord, {})
+await new Promise(resolve => setTimeout(resolve, 5000))
+await nikonCamera.send(EndMovieRecord, {})
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Option 5 (FAILS): Remote mode -> Video Mode -> Remote Mode -> GetLiveViewSelector
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'Remote Mode' }) // OK
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'REMOTE' }) // OK
 // await nikonCamera.set(LiveViewSelector, 'VIDEO') // OK
-// await nikonCamera.send(ChangeCameraMode, { Mode: 'PC Camera Mode' }) // OK
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'PC_CAMERA' }) // OK
 
 // const liveViewSelector = await nikonCamera.get(LiveViewSelector) // PHOTO
 // console.log(liveViewSelector)
@@ -133,18 +135,18 @@ await nikonCamera.connect()
 // Option 6 (FAILS): Remote Mode -> Video Mode -> Start Live View -> Application Mode -> PC Camera Mode -> GetLiveViewSelector
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-await nikonCamera.send(ChangeCameraMode, { Mode: 'Remote Mode' })
-await nikonCamera.set(LiveViewSelector, 'VIDEO')
-await nikonCamera.send(StartLiveView, {})
-await nikonCamera.send(ChangeApplicationMode, { Mode: 'ON' })
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'REMOTE' })
+// await nikonCamera.set(LiveViewSelector, 'VIDEO')
+// await nikonCamera.send(StartLiveView, {})
+// await nikonCamera.send(ChangeApplicationMode, { Mode: 'ON' })
 
-let liveViewSelector = await nikonCamera.get(LiveViewSelector)
-console.log(liveViewSelector)
+// let liveViewSelector = await nikonCamera.get(LiveViewSelector)
+// console.log(liveViewSelector)
 
-await nikonCamera.send(ChangeCameraMode, { Mode: 'PC Camera Mode' })
-// now camera is back in photo mode because of the hardware dial :(
-liveViewSelector = await nikonCamera.get(LiveViewSelector)
-console.log(liveViewSelector)
+// await nikonCamera.send(ChangeCameraMode, { Mode: 'PC_CAMERA' })
+// // now camera is back in photo mode because of the hardware dial :(
+// liveViewSelector = await nikonCamera.get(LiveViewSelector)
+// console.log(liveViewSelector)
 
 // const prohibitionCondition = await nikonCamera.get(MovieRecProhibitionCondition)
 // console.log('prohibitionCondition:', prohibitionCondition)

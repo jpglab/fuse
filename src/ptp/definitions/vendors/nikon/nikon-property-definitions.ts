@@ -5,6 +5,23 @@ import { PropertyDefinition } from '@ptp/types/property'
 const UINT8 = getDatatypeByName('UINT8')!.code
 const UINT32 = getDatatypeByName('UINT32')!.code
 
+export const LiveViewStatus = {
+    code: 0xd1b8,
+    name: 'LiveViewStatus',
+    description: 'Indicates the status of live view (ON or OFF)',
+    datatype: UINT8,
+    access: 'GetSet',
+    codec: registry =>
+        new EnumCodec(
+            registry,
+            [
+                { value: 0, name: 'OFF', description: 'Live view is disabled' },
+                { value: 1, name: 'ON', description: 'Live view is enabled' },
+            ] as const,
+            registry.codecs.uint8
+        ),
+} as const satisfies PropertyDefinition
+
 export const LiveViewSelector = {
     code: 0xd1a6,
     name: 'LiveViewSelector',
@@ -51,6 +68,7 @@ export const MovieRecProhibitionCondition = {
 } as const satisfies PropertyDefinition
 
 export const nikonPropertyRegistry = {
+    LiveViewStatus,
     LiveViewSelector,
     MovieRecProhibitionCondition,
 } as const
