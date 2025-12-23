@@ -5,6 +5,7 @@ node_modules/
 dist/
 build/
 out/
+.turbo/
 
 # env and SSL certificates
 *.env
